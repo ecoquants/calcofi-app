@@ -3,6 +3,7 @@ librarian::shelf(
   dplyr, dygraphs, here, 
   leaflet, lubridate, readr, 
   sf, shiny, shinydashboard)
+options(readr.show_col_types = F)
 
 # surveys ----
 gdb <- here("data/obis_seamap_dataset_507_gdb_36682/obis_seamap_dataset_507.gdb")
