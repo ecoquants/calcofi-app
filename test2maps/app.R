@@ -1,19 +1,14 @@
 library(shiny)
 library(leaflet)
 
-ui <- fluidPage(
-  titlePanel("Test 2 Maps"),
-  sidebarLayout(
-    sidebarPanel(),
-    mainPanel(
-      tabsetPanel(
-        type = "tabs",
-        tabPanel(
-          "Map 1", 
-          leafletOutput("map1")),
-        tabPanel(
-          "Map 2", 
-          leafletOutput("map2"))))))
+ui <- navbarPage(
+  "Test 2 Maps",
+  tabPanel(
+      "Map 1", 
+      leafletOutput("map1")),
+    tabPanel(
+      "Map 2", 
+      leafletOutput("map2")))
 
 server <- function(input, output) {
 
