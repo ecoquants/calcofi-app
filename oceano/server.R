@@ -1,8 +1,9 @@
 shinyServer(function(input, output, session) {
   
   values <- reactiveValues(
-    ply_draw = NULL)
-  
+    ply_draw = NULL,
+    test = "A")
+
   # map ----
   output$map <- renderLeaflet({
     
@@ -24,8 +25,6 @@ shinyServer(function(input, output, session) {
       leaflet.extras::addDrawToolbar(
         targetGroup = "ply_draw",
         editOptions = leaflet.extras::editToolbarOptions(
-          # edit = F,
-          # remove = T,
           selectedPathOptions = selectedPathOptions()),
         circleOptions = F,
         circleMarkerOptions = F,
@@ -33,32 +32,19 @@ shinyServer(function(input, output, session) {
         polylineOptions = F,
         singleFeature = T) 
     
-    ply_draw <- values$ply_draw
-    if (!is.null(ply_draw)){
-      bb <- sf::st_bbox(ply_draw)
-      
-      m <- m %>% 
-        addPolygons(data = ply_draw, group = "ply_draw") # %>%
-      # flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
-    }
-    
     m })
   
-  # * map_draw_all_features ----
+  # * save drawn poly ----
   observe({
     #use the draw_stop event to detect when users finished drawing
     # https://github.com/bhaskarvk/leaflet.extras/blob/master/inst/examples/shiny/draw-events/app.R
     req(input$map_draw_all_features)
     
-    #message("observe output$mapeditor_draw_all_features - beg")
-    
     feature <- isolate(input$map_draw_all_features$features[[1]])
-    
     ply_json <- geojsonio::as.json(feature$geometry)
     ply <- st_read(ply_json, quiet = T)
-    #ply_wkt <- st_as_text(st_geometry(ply))
     values$ply_draw <- ply
-    
+
     leafletProxy("map") %>%
       clearShapes()
     
@@ -66,25 +52,27 @@ shinyServer(function(input, output, session) {
       bb <- sf::st_bbox(ply)
       
       leafletProxy("map") %>%
-        addPolygons(data = ply, group = "ply_draw_aoi") %>% 
+        addPolygons(data = ply, group = "ply_draw") %>% 
         flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
     }
     
-    #message("observe output$mapeditor_draw_all_features - end")
   })
   
   # get_timeseries_data() ----
   get_timeseries_data <- reactive({
 
-    # TODO: translate input$sel_stats
+    # handle special inputs
     input_stats <- c("mean", "sd")
+    # TODO: translate input$sel_stats
+    if (is.null(values$ply_draw)){
+      aoi_wkt <- NULL
+    } else {
+      aoi_wkt <- st_as_text(values$ply_draw$geometry)
+    }
     
     calcofi4r::get_timeseries(
       variable    = input$sel_var,
-      aoi_wkt     = switch(
-        is.null(values$ply_draw), 
-        NULL, 
-        st_as_text(values$ply_draw)),
+      aoi_wkt     = aoi_wkt,
       depth_m_min = input$sel_depth_range[1], 
       depth_m_max = input$sel_depth_range[2],
       date_beg    = input$sel_date_range[1], 
@@ -97,9 +85,15 @@ shinyServer(function(input, output, session) {
   # plot ----
   output$plot <- renderDygraph({
 
+    if (is.null(values$ply_draw)){
+      aoi_wkt <- NULL
+      message(glue("renderDygraph() aoi_wkt: NULL"))
+    } else {
+      aoi_wkt <- st_as_text(values$ply_draw$geometry)
+      message(glue("renderDygraph() aoi_wkt: {aoi_wkt}"))
+    }
     d <- get_timeseries_data()
     
-    # browser()
     v <- d_vars %>% 
       filter(table_field == input$sel_var)
     names(d) <- c("time", "avg", "sd", "n")

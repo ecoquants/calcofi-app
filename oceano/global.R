@@ -1,9 +1,11 @@
+# packages
 librarian::shelf(
-  # calcofi/calcofi4r
-  dygraphs, here, httr2, leaflet, leaflet.extras, 
+  calcofi/calcofi4r,
+  dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
   readr, sf, shiny)
+# devtools::install_local(here("../calcofi4r")) # install local
+# devtools::load_all(here("../calcofi4r"))      # debug
 options(readr.show_col_types = F)
-devtools::load_all(here("../calcofi4r"))
 
 source(here("../scripts/libs/db.R")) # calcofi/scripts repo
 
