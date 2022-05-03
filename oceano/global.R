@@ -3,11 +3,12 @@ librarian::shelf(
   calcofi/calcofi4r,
   dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
   readr, sf, shiny)
-# devtools::install_local(here("../calcofi4r")) # install local
-# devtools::load_all(here("../calcofi4r"))      # debug
+# remotes::install_github("calcofi/calcofi4r", force=T) # install remote
+# devtools::install_local(here("../calcofi4r"))         # install local
+# devtools::load_all(here("../calcofi4r"))              # debug
 options(readr.show_col_types = F)
 
-source(here("../scripts/libs/db.R")) # calcofi/scripts repo
+source(here("./libs/db.R")) # calcofi/scripts repo
 
 # pts_stations
 pts_stations <- st_read(con, "stations")
