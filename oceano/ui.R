@@ -42,8 +42,17 @@ shinyUI(fluidPage(
     
     mainPanel(
       tabsetPanel(
-        tabPanel("Map",
-          leafletOutput("map")),
-        tabPanel("Plot",
-          dygraphOutput("plot")) ))
+        tabPanel(
+          "Draw AOI",
+          leafletOutput("map_aoi")),
+        tabPanel(
+          "Plot TimeSeries",
+          dygraphOutput("plot_ts")),
+        tabPanel(
+          "Map Raster",
+          selectInput(
+            "sel_cruise",
+            "Cruise ID",
+            d_cruises$cruise_id),
+          leafletOutput("map_r")) ))
   )))

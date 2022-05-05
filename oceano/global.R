@@ -1,14 +1,17 @@
 # packages
 librarian::shelf(
   calcofi/calcofi4r,
-  dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
-  readr, sf, shiny)
-# remotes::install_github("calcofi/calcofi4r", force=T) # install remote
-# devtools::install_local(here("../calcofi4r"))         # install local
+  digest, dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
+  raster, readr, sf, shiny)
+# remotes::install_github("calcofi/calcofi4r", force=T)  # install remote
+# devtools::install_local(here("../calcofi4r"), force=T) # install local
 # devtools::load_all(here("../calcofi4r"))              # debug
+select <- dplyr::select
 options(readr.show_col_types = F)
 
 source(here("./libs/db.R")) # calcofi/scripts repo
+
+dir_cache <- "/tmp"
 
 # pts_stations
 pts_stations <- st_read(con, "stations")
@@ -26,4 +29,5 @@ ctdcast_depths <- dbGetQuery(
     SELECT depth_m FROM ctdcast_bottle_dic) x")
 
 # d_vars
-d_vars <- calcofi4r::get_variables()
+d_vars    <- calcofi4r::get_variables()
+d_cruises <- calcofi4r::get_cruises()
