@@ -1,11 +1,13 @@
 shinyServer(function(input, output, session) {
   
+  addResourcePath("cache", dir_cache)
+  
   values <- reactiveValues(
     ply_draw = NULL,
-    test = "A")
+    map_r    = NULL)
 
-  # map ----
-  output$map <- renderLeaflet({
+  # map_aoi ----
+  output$map_aoi <- renderLeaflet({
     
     # base map
     m <- leaflet() %>%
@@ -38,23 +40,102 @@ shinyServer(function(input, output, session) {
   observe({
     #use the draw_stop event to detect when users finished drawing
     # https://github.com/bhaskarvk/leaflet.extras/blob/master/inst/examples/shiny/draw-events/app.R
-    req(input$map_draw_all_features)
+    req(input$map_aoi_draw_all_features)
     
-    feature <- isolate(input$map_draw_all_features$features[[1]])
+    feature <- isolate(input$map_aoi_draw_all_features$features[[1]])
     ply_json <- geojsonio::as.json(feature$geometry)
     ply <- st_read(ply_json, quiet = T)
     values$ply_draw <- ply
 
-    leafletProxy("map") %>%
+    leafletProxy("map_aoi") %>%
       clearShapes()
     
     if (!is.null(ply)){
       bb <- sf::st_bbox(ply)
       
-      leafletProxy("map") %>%
+      leafletProxy("map_aoi") %>%
         addPolygons(data = ply, group = "ply_draw") %>% 
         flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
     }
+    
+  })
+  
+  # map_r ----
+  output$map_r <- renderLeaflet({
+    
+    # base map
+    b <- st_bbox(pts_stations)
+    m <- leaflet() %>%
+      addProviderTiles(
+        providers$Stamen.TonerLite,
+        options = providerTileOptions(noWrap = TRUE)) %>% 
+      fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
+    
+    m
+  })
+  
+  
+  output$download_r <- renderUI({
+    f_tif <- get_r_path()
+    tagList(
+      "Download raster data: ", 
+      a(basename(f_tif), href=f_tif))
+  })
+  output$r_condition <- reactive({
+    file.exists(get_r_path())
+  })
+  outputOptions(output, "r_condition", suspendWhenHidden = FALSE)
+  get_r_args <- reactive({
+    list(
+      variable = input$sel_var,
+      cruise_id = input$sel_cruise,
+      depth_m_min = input$sel_depth_range[1], 
+      depth_m_max = input$sel_depth_range[2])
+  })
+  get_r_path <- reactive({
+    req(input$sel_cruise, input$sel_var)
+    
+    api_args <- get_r_args()
+    hash    <- digest(api_args, algo="crc32")
+    f_tif   <- glue("{dir_cache}/api_raster_{hash}.tif")
+    f_tif
+  })
+  
+  
+  # * map raster ----
+  observeEvent(input$btn_r, {
+    req(input$sel_cruise, input$sel_var)
+    
+    api_args <- get_r_args()
+    f_tif    <- get_r_path()
+    
+    if (!file.exists(f_tif)){
+      message(glue("f_tif missing, get_raster()"))
+      do.call(calcofi4r::get_raster, c(api_args, list(out_tif=f_tif)))
+      stopifnot(file.exists(f_tif))
+    }
+
+    message(glue("raster({basename(f_tif)})"))
+    r <- raster(f_tif) # raster::plot(r)
+    # r <- raster("/tmp/api_raster_08a528bf.tif")
+    
+    b <- st_bbox(extent(projectExtent(r, crs = 4326)))
+    r_v <- values(r)
+    pal <- colorNumeric("Spectral", r_v)
+    v <- d_vars %>% 
+      filter(table_field == input$sel_var)
+
+    leafletProxy("map_r") %>% # m %>% 
+      clearImages() %>% 
+      clearControls() %>% 
+      addRasterImage(
+        r, project = F,
+        colors = "Spectral", opacity=0.7) %>% 
+      # TODO: add log/log10 option
+      addLegend(
+        pal = pal, values = r_v,
+        title = v$plot_label) %>% 
+      flyToBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
     
   })
   
@@ -82,8 +163,8 @@ shinyServer(function(input, output, session) {
     
   })
   
-  # plot ----
-  output$plot <- renderDygraph({
+  # plot_ts ----
+  output$plot_ts <- renderDygraph({
 
     if (is.null(values$ply_draw)){
       aoi_wkt <- NULL

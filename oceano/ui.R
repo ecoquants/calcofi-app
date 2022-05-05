@@ -9,7 +9,7 @@ shinyUI(fluidPage(
         "Variable",
         setNames(
           d_vars$table_field,
-          d_vars$plot_title)),
+          d_vars$plot_label)),
       sliderInput(
         "sel_depth_range",
         "Depth(m) range",
@@ -42,8 +42,21 @@ shinyUI(fluidPage(
     
     mainPanel(
       tabsetPanel(
-        tabPanel("Map",
-          leafletOutput("map")),
-        tabPanel("Plot",
-          dygraphOutput("plot")) ))
+        tabPanel(
+          "Draw AOI",
+          leafletOutput("map_aoi")),
+        tabPanel(
+          "Plot TimeSeries",
+          dygraphOutput("plot_ts")),
+        tabPanel(
+          "Map Raster",
+          selectInput(
+            "sel_cruise",
+            "Cruise",
+            sort(d_cruises$cruise_id, decreasing=T)),
+          actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
+          leafletOutput("map_r"),
+          conditionalPanel(
+            condition = "output.r_condition",
+            uiOutput("download_r")) )))
   )))
