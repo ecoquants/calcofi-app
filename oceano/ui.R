@@ -55,5 +55,8 @@ shinyUI(fluidPage(
             "Cruise",
             sort(d_cruises$cruise_id, decreasing=T)),
           actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
-          leafletOutput("map_r")) ))
+          leafletOutput("map_r"),
+          conditionalPanel(
+            condition = "output.r_condition",
+            uiOutput("download_r")) )))
   )))

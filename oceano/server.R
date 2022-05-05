@@ -1,5 +1,7 @@
 shinyServer(function(input, output, session) {
   
+  addResourcePath("cache", dir_cache)
+  
   values <- reactiveValues(
     ply_draw = NULL,
     map_r    = NULL)
@@ -71,17 +73,41 @@ shinyServer(function(input, output, session) {
     
     m
   })
-  # * map raster ----
-  observeEvent(input$btn_r, {
-    req(input$sel_cruise != "", input$sel_var)
-    
-    api_args <- list(
+  
+  
+  output$download_r <- renderUI({
+    f_tif <- get_r_path()
+    tagList(
+      "Download raster data: ", 
+      a(basename(f_tif), href=f_tif))
+  })
+  output$r_condition <- reactive({
+    file.exists(get_r_path())
+  })
+  outputOptions(output, "r_condition", suspendWhenHidden = FALSE)
+  get_r_args <- reactive({
+    list(
       variable = input$sel_var,
       cruise_id = input$sel_cruise,
       depth_m_min = input$sel_depth_range[1], 
       depth_m_max = input$sel_depth_range[2])
+  })
+  get_r_path <- reactive({
+    req(input$sel_cruise, input$sel_var)
+    
+    api_args <- get_r_args()
     hash    <- digest(api_args, algo="crc32")
     f_tif   <- glue("{dir_cache}/api_raster_{hash}.tif")
+    f_tif
+  })
+  
+  
+  # * map raster ----
+  observeEvent(input$btn_r, {
+    req(input$sel_cruise, input$sel_var)
+    
+    api_args <- get_r_args()
+    f_tif    <- get_r_path()
     
     if (!file.exists(f_tif)){
       message(glue("f_tif missing, get_raster()"))
@@ -91,7 +117,7 @@ shinyServer(function(input, output, session) {
 
     message(glue("raster({basename(f_tif)})"))
     r <- raster(f_tif) # raster::plot(r)
-    r <- raster("/tmp/api_raster_08a528bf.tif")
+    # r <- raster("/tmp/api_raster_08a528bf.tif")
     
     b <- st_bbox(extent(projectExtent(r, crs = 4326)))
     r_v <- values(r)
