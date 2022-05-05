@@ -15,7 +15,6 @@ dir_cache <- "/tmp"
 
 # pts_stations
 pts_stations <- st_read(con, "stations")
-
 # ctdcast_ranges
 # TODO: add indexes in db to:
 #  ctdcast.date, ctdcast_bottle.depthm, ctdcast_bottle_dic.depth_m

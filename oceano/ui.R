@@ -9,7 +9,7 @@ shinyUI(fluidPage(
         "Variable",
         setNames(
           d_vars$table_field,
-          d_vars$plot_title)),
+          d_vars$plot_label)),
       sliderInput(
         "sel_depth_range",
         "Depth(m) range",
@@ -52,7 +52,8 @@ shinyUI(fluidPage(
           "Map Raster",
           selectInput(
             "sel_cruise",
-            "Cruise ID",
-            d_cruises$cruise_id),
+            "Cruise",
+            sort(d_cruises$cruise_id, decreasing=T)),
+          actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
           leafletOutput("map_r")) ))
   )))

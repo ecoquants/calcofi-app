@@ -60,16 +60,20 @@ shinyServer(function(input, output, session) {
   
   # map_r ----
   output$map_r <- renderLeaflet({
+    
     # base map
+    b <- st_bbox(pts_stations)
     m <- leaflet() %>%
       addProviderTiles(
         providers$Stamen.TonerLite,
-        options = providerTileOptions(noWrap = TRUE))
+        options = providerTileOptions(noWrap = TRUE)) %>% 
+      fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
+    
     m
   })
   # * map raster ----
-  observe({
-    req(input$sel_cruise, input$sel_var)
+  observeEvent(input$btn_r, {
+    req(input$sel_cruise != "", input$sel_var)
     
     api_args <- list(
       variable = input$sel_var,
@@ -87,16 +91,24 @@ shinyServer(function(input, output, session) {
 
     message(glue("raster({basename(f_tif)})"))
     r <- raster(f_tif) # raster::plot(r)
-    # browser()
-    # pal <- colorNumeric("Spectral")
-
+    r <- raster("/tmp/api_raster_08a528bf.tif")
+    
     b <- st_bbox(extent(projectExtent(r, crs = 4326)))
+    r_v <- values(r)
+    pal <- colorNumeric("Spectral", r_v)
+    v <- d_vars %>% 
+      filter(table_field == input$sel_var)
 
     leafletProxy("map_r") %>% # m %>% 
       clearImages() %>% 
+      clearControls() %>% 
       addRasterImage(
         r, project = F,
         colors = "Spectral", opacity=0.7) %>% 
+      # TODO: add log/log10 option
+      addLegend(
+        pal = pal, values = r_v,
+        title = v$plot_label) %>% 
       flyToBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
     
   })
