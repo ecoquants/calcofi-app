@@ -4,7 +4,7 @@ librarian::shelf(
   digest, dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
   raster, readr, sf, shiny)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
-# devtools::install_local(here("../calcofi4r"), force=T)  # install local
+# devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug
 select <- dplyr::select
 options(readr.show_col_types = F)

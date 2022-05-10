@@ -47,7 +47,8 @@ shinyUI(fluidPage(
           leafletOutput("map_aoi")),
         tabPanel(
           "Plot TimeSeries",
-          dygraphOutput("plot_ts")),
+          dygraphOutput("plot_ts"),
+          downloadLink("dl_csv", "Download data (*.csv)")),
         tabPanel(
           "Map Raster",
           selectInput(
@@ -55,8 +56,8 @@ shinyUI(fluidPage(
             "Cruise",
             sort(d_cruises$cruise_id, decreasing=T)),
           actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
+          br(),
           leafletOutput("map_r"),
-          conditionalPanel(
-            condition = "output.r_condition",
-            uiOutput("download_r")) )))
+          # TODO: fix dl_tif, not working
+          #downloadLink("dl_tif", "Download data (*.tif)") )))
   )))

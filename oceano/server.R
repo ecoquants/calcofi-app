@@ -139,6 +139,19 @@ shinyServer(function(input, output, session) {
     
   })
   
+  # * download tif ----
+  output$dl_tif <- downloadHandler(
+    filename = function() {
+      get_r_path()
+    },
+    content = function(file) {
+      f_tif <- get_r_path()
+      # TODO: fix, not working
+      readBin(f_tif, "raw") %>% 
+        writeBin(file)
+    }
+  )
+  
   # get_timeseries_data() ----
   get_timeseries_data <- reactive({
 
@@ -184,8 +197,20 @@ shinyServer(function(input, output, session) {
     d %>% 
       select(time, avg, lwr, upr) %>% 
       dygraph(main = v$plot_title) %>%
-      dySeries(c("lwr", "avg", "upr"), label = v$plot_label) # %>%
+      dySeries(
+        c("lwr", "avg", "upr"), 
+        label = v$plot_label, color = v$plot_color) # %>%
     # dyOptions(drawGrid = input$showgrid)
   })
+  
+  # * download csv ----
+  output$dl_csv <- downloadHandler(
+    filename = function() {
+      glue("calcofi_timeseries_{input$sel_var}.csv")
+    },
+    content = function(file) {
+      write_csv(get_timeseries_data(), file)
+    }
+  )
   
 })
