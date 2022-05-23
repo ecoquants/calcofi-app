@@ -1,4 +1,5 @@
 shinyUI(fluidPage(
+  tags$head(tags$link(rel="stylesheet", type="text/css", href="styles.css")),
   titlePanel("CalCOFI Oceanographic App"),
 
   sidebarLayout(
@@ -43,7 +44,26 @@ shinyUI(fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel(
-          "Draw AOI",
+          "Define AOI",
+          # selectInput(
+          #   "sel_aoi_method",
+          #   "Method", c("Draw", "Select")),
+          switchInput(
+            "sel_aoi_draw",
+            "Method", F,
+            onLabel = "Draw",
+            offLabel = "Select"
+          ),
+          selectInput(
+            "sel_aoi_category",
+            "Category", 
+            list(
+              `CalCOFI` = c(
+                "Stations" = "cc_stations"),
+              `Federal` = c(
+                "National Sanctuaries" = "aoi_fed_sanctuaries"),
+              `State`   = c(
+                "MPA Regions"          = "aoi_ca_mpargns"))),
           leafletOutput("map_aoi")),
         tabPanel(
           "Plot TimeSeries",
@@ -59,5 +79,6 @@ shinyUI(fluidPage(
           br(),
           leafletOutput("map_r"),
           # TODO: fix dl_tif, not working
-          #downloadLink("dl_tif", "Download data (*.tif)") )))
+          #downloadLink("dl_tif", "Download data (*.tif)")
+          )))
   )))

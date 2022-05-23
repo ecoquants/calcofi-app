@@ -15,26 +15,86 @@ shinyServer(function(input, output, session) {
         providers$Stamen.TonerLite,
         options = providerTileOptions(noWrap = TRUE))
     
-    # add stations
-    m <- m %>%
-      addCircleMarkers(
-        data = pts_stations,
-        radius = 2, stroke = F,
-        label = ~sta_id)
+    # add selectable features
+    if (!is.null(input$sel_aoi_category)){
+      # input = list(sel_aoi_category = "aoi_fed_sanctuaries")
       
+      if (input$sel_aoi_category == "cc_stations"){
+        m <- m %>%
+          addCircleMarkers(
+            data = pts_stations,
+            radius = 2, stroke = F,
+            label = ~sta_id,
+            layerId = ~sta_id,
+            group = "features")
+      } else {
+        f <- st_read(con, input$sel_aoi_category)
+        m <- m %>%
+          addPolygons(
+            data = f,
+            label = ~sanctuary,
+            layerId = ~sanctuary,
+            group = "features")
+      }
+    }
+    
     # add draw toolbar
-    m <- m %>%
-      leaflet.extras::addDrawToolbar(
-        targetGroup = "ply_draw",
-        editOptions = leaflet.extras::editToolbarOptions(
-          selectedPathOptions = selectedPathOptions()),
-        circleOptions = F,
-        circleMarkerOptions = F,
-        markerOptions = F,
-        polylineOptions = F,
-        singleFeature = T) 
+    if (input$sel_aoi_draw){
+      m <- m %>%
+        leaflet.extras::addDrawToolbar(
+          targetGroup = "ply_draw",
+          editOptions = leaflet.extras::editToolbarOptions(
+            selectedPathOptions = selectedPathOptions()),
+          circleOptions = F,
+          circleMarkerOptions = F,
+          markerOptions = F,
+          polylineOptions = F,
+          singleFeature = T) 
+    }
     
     m })
+  
+  # * clicked feature ----
+  observe({
+    
+    m <- leafletProxy("map_aoi")
+    
+    if (input$sel_aoi_category == "cc_stations"){
+      req(input$map_aoi_marker_click)
+      clk <- input$map_aoi_marker_click
+      
+      m %>%
+        clearGroup("selected") %>% 
+        addCircleMarkers(
+          data = pts_stations %>% 
+            filter(sta_id == clk$id),
+          # radius = 2, stroke = F, 
+          color = "yellow", #fillColor="yellow",
+          group = "selected",
+          label = ~sta_id,
+          labelOptions = labelOptions(
+            permanent = T),
+          layerId = ~glue("sel_{sta_id}"))
+    } else {
+      req(input$map_aoi_shape_click)
+      clk <- input$map_aoi_shape_click
+      
+      f <- st_read(con, input$sel_aoi_category)
+      
+      m %>% 
+        clearGroup("selected") %>% 
+        addPolygons(
+          data = f %>% 
+            filter(sanctuary == clk$id),
+          color = "yellow", 
+          opacity = 0.8, 
+          group = "selected",
+          label = ~sanctuary,
+          labelOptions = labelOptions(
+            permanent = T),
+          layerId = ~glue("sel_{sanctuary}"))
+    }
+  })
   
   # * save drawn poly ----
   observe({
