@@ -59,5 +59,6 @@ shinyUI(fluidPage(
           br(),
           leafletOutput("map_r"),
           # TODO: fix dl_tif, not working
-          #downloadLink("dl_tif", "Download data (*.tif)") )))
+          #downloadLink("dl_tif", "Download data (*.tif)")
+        )))
   )))
