@@ -250,6 +250,11 @@ shinyServer(function(input, output, session) {
     
     v <- d_vars %>% 
       filter(table_field == input$sel_var)
+    
+    # d <- read_csv(here("../api/tmp_larvae.csv"))
+    # v <- tbl(con, "field_labels") %>% 
+    #   filter(table_field == "larvae_counts.count")
+    
     names(d) <- c("time", "avg", "sd", "n")
     d$lwr <- d$avg - d$sd
     d$upr <- d$avg + d$sd

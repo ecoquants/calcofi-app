@@ -14,6 +14,7 @@ con <- DBI::dbConnect(
   RPostgres::Postgres(),
   dbname   = "gis",
   host     = "db.calcofi.io",
+  # host     = "localhost",
   port     = 5432,
   user     = "admin",
   password = readLines(db_pass_txt))

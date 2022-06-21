@@ -3,6 +3,14 @@ librarian::shelf(
   calcofi/calcofi4r,
   digest, dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
   raster, readr, sf, shiny, shinyWidgets)
+# librarian::shelf(
+  # calcofi/calcofi4r,
+  # httr2,
+  # shinyWidgets)
+# librarian::shelf(
+#   digest, dygraphs, glue, here, leaflet, leaflet.extras,
+#   raster, readr, sf, shiny)
+
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug
