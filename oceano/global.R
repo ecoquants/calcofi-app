@@ -1,15 +1,9 @@
 # packages
 librarian::shelf(
-  calcofi/calcofi4r,
-  digest, dygraphs, glue, here, httr2, leaflet, leaflet.extras, 
-  raster, readr, sf, shiny, shinyWidgets)
-# librarian::shelf(
   # calcofi/calcofi4r,
-  # httr2,
-  # shinyWidgets)
-# librarian::shelf(
-#   digest, dygraphs, glue, here, leaflet, leaflet.extras,
-#   raster, readr, sf, shiny)
+  digest, dygraphs, geojsonio, glue, here, httr2, 
+  leaflet, leaflet.extras, 
+  raster, readr, sf, shiny, shinyWidgets)
 
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
@@ -27,13 +21,10 @@ pts_stations <- st_read(con, "stations")
 # TODO: add indexes in db to:
 #  ctdcast.date, ctdcast_bottle.depthm, ctdcast_bottle_dic.depth_m
 ctdcast_dates <- dbGetQuery(
-  con, "SELECT MIN(date) min, MAX(date) max FROM ctdcast")
+  con, "SELECT MIN(date) min, MAX(date) max FROM ctd_casts")
 ctdcast_depths <- dbGetQuery(
   con, 
-  "SELECT MAX(depth_m) max FROM (
-    SELECT depth_m FROM ctdcast_bottle
-    UNION
-    SELECT depth_m FROM ctdcast_bottle_dic) x")
+  "SELECT MAX(depthm) max FROM ctd_bottles")
 
 # d_vars
 d_vars    <- calcofi4r::get_variables()
