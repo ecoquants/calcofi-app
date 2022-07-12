@@ -1,4 +1,5 @@
-# packages
+# packages ----
+# devtools::install_local("/share/github/calcofi4r")
 librarian::shelf(
   calcofi/calcofi4r,
   digest, dygraphs, glue, geojsonio, here, httr2, leaflet, leaflet.extras, 
@@ -9,7 +10,7 @@ librarian::shelf(
 select <- dplyr::select
 options(readr.show_col_types = F)
 
-source(here("./libs/db.R")) # calcofi/scripts repo
+source(here("./libs/db.R"))
 
 dir_cache <- "/tmp"
 
