@@ -12,8 +12,25 @@ shinyServer(function(input, output, session) {
     # base map
     m <- leaflet() %>%
       addProviderTiles(
+        group = "Gray basemap",
         providers$Stamen.TonerLite,
+        options = providerTileOptions(noWrap = TRUE)) %>% 
+      addProviderTiles(
+        group = "Ocean basemap",
+        providers$Esri.OceanBasemap,
         options = providerTileOptions(noWrap = TRUE))
+    
+    # add stations
+    m <- m %>%
+      addCircleMarkers(
+        group = "Stations",
+        data = pts_stations,
+        radius = 2, stroke = F,
+        label = ~sta_id) %>% 
+      addLayersControl(
+          baseGroups = c("Gray basemap", "Ocean basemap"),
+          overlayGroups = c("Stations"),
+          options = layersControlOptions(collapsed = T))
     
     # add selectable features
     if (!is.null(input$sel_aoi_category)){
@@ -26,16 +43,23 @@ shinyServer(function(input, output, session) {
             radius = 2, stroke = F,
             label = ~sta_id,
             layerId = ~sta_id,
-            group = "features")
+            group = "Features")
       } else {
         f <- st_read(con, input$sel_aoi_category)
         m <- m %>%
+          hideGroup("Stations") %>% 
           addPolygons(
             data = f,
             label = ~sanctuary,
             layerId = ~sanctuary,
-            group = "features")
+            group = "Features")
       }
+      m <- m %>%
+        removeLayersControl() %>% 
+        addLayersControl(
+          baseGroups = c("Gray basemap", "Ocean basemap"),
+          overlayGroups = c("Stations", "Features"),
+          options = layersControlOptions(collapsed = T))
     }
     
     # add draw toolbar

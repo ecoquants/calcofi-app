@@ -44,10 +44,12 @@ shinyUI(fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel(
-          "Define AOI",
+          "Area",
           # selectInput(
           #   "sel_aoi_method",
           #   "Method", c("Draw", "Select")),
+          helpText("Define the area of interest by drawing a polygon or selecting 
+             an existing feature."),
           switchInput(
             "sel_aoi_draw",
             "Method", F,
@@ -58,27 +60,31 @@ shinyUI(fluidPage(
             "sel_aoi_category",
             "Category", 
             list(
-              `CalCOFI` = c(
-                "Stations" = "cc_stations"),
+              # `CalCOFI` = c(
+              #   "Stations" = "cc_stations"),
               `Federal` = c(
-                "National Sanctuaries" = "aoi_fed_sanctuaries"),
-              `State`   = c(
-                "MPA Regions"          = "aoi_ca_mpargns"))),
+                "National Sanctuaries" = "aoi_fed_sanctuaries"))),
+              # `State`   = c(
+              #   "MPA Regions"          = "aoi_ca_mpargns"))),
           leafletOutput("map_aoi")),
         tabPanel(
-          "Plot TimeSeries",
+          "Time",
           dygraphOutput("plot_ts"),
           downloadLink("dl_csv", "Download data (*.csv)")),
         tabPanel(
-          "Map Raster",
+          "Space",
           selectInput(
             "sel_cruise",
             "Cruise",
-            sort(d_cruises$cruise_id, decreasing=T)),
+            sort(d_cruises$cruiseid, decreasing=T)),
           actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
           br(),
           leafletOutput("map_r"),
           # TODO: fix dl_tif, not working
           #downloadLink("dl_tif", "Download data (*.tif)")
-        )))
+        ),
+        tabPanel(
+          "Depth",
+          "TODO")
+        ))
   )))
