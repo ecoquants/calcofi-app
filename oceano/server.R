@@ -195,6 +195,8 @@ shinyServer(function(input, output, session) {
     
     if (!file.exists(f_tif)){
       message(glue("f_tif missing, get_raster()"))
+      # browser() # dput(api_args))
+      # variable = "ctd_bottles.t_degc", cruise_id = "2020-01-05-C-33RL", depth_m_min = 0L, depth_m_max = 5351L
       do.call(calcofi4r::get_raster, c(api_args, list(out_tif=f_tif)))
       stopifnot(file.exists(f_tif))
     }
