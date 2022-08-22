@@ -5,7 +5,35 @@ shinyServer(function(input, output, session) {
   values <- reactiveValues(
     ply_draw = NULL,
     map_r    = NULL)
-
+  
+  output$ui_stats <- renderUI({
+    # tagList(
+    #   sliderInput("n", "N", 1, 1000, 500),
+    #   textInput("label", "Label")
+    # )
+    
+    if (input$tabs == "time"){
+      ui <- selectInput(
+        "sel_stats",
+        "Statistics (to summarize)",
+        # c("average +/- standard deviation",
+        #   "average + 95% - 5%",
+        #   "average + maximum - minimum",
+        #   "median + 90% - 10%")) ),
+        c("avg +/- sd",
+          "avg +/- 45%",
+          "avg +/- max",
+          "median +/- 40%"))
+    } else {
+      ui <- selectInput(
+        "sel_stat",
+        "Value",
+        c("avg", "min", "max", "# obs"))
+    }
+      
+    ui
+  })
+  
   # map_aoi ----
   output$map_aoi <- renderLeaflet({
     
