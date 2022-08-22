@@ -41,35 +41,43 @@ dashboardPage(
       c("avg +/- sd",
         "avg +/- 45%",
         "avg +/- max",
-        "median +/- 40%")) ),
+        "median +/- 40%")),
+        wellPanel(
+          h5(icon("map-marked"), "Location"),
+          div(
+            class="shiny-input-container",
+            leafletOutput("map_side", height = 200)),
+          actionButton(
+            "btn_mod_map", "Add", icon = icon("plus"), width = "170px"))
+    ),
     
     dashboardBody(
       tags$head(tags$link(rel="stylesheet", type="text/css", href="styles.css")),
       tabsetPanel(
-        tabPanel(
-          "Area",
-          # selectInput(
-          #   "sel_aoi_method",
-          #   "Method", c("Draw", "Select")),
-          helpText("Define the area of interest by drawing a polygon or selecting 
-             an existing feature."),
-          switchInput(
-            "sel_aoi_draw",
-            "Method", F,
-            onLabel = "Draw",
-            offLabel = "Select"
-          ),
-          selectInput(
-            "sel_aoi_category",
-            "Category", 
-            list(
-              # `CalCOFI` = c(
-              #   "Stations" = "cc_stations"),
-              `Federal` = c(
-                "National Sanctuaries" = "aoi_fed_sanctuaries"))),
-              # `State`   = c(
-              #   "MPA Regions"          = "aoi_ca_mpargns"))),
-          leafletOutput("map_aoi")),
+        # tabPanel(
+        #   "Area",
+        #   # selectInput(
+        #   #   "sel_aoi_method",
+        #   #   "Method", c("Draw", "Select")),
+        #   helpText("Define the area of interest by drawing a polygon or selecting 
+        #      an existing feature."),
+        #   switchInput(
+        #     "sel_aoi_draw",
+        #     "Method", F,
+        #     onLabel = "Draw",
+        #     offLabel = "Select"
+        #   ),
+        #   selectInput(
+        #     "sel_aoi_category",
+        #     "Category", 
+        #     list(
+        #       # `CalCOFI` = c(
+        #       #   "Stations" = "cc_stations"),
+        #       `Federal` = c(
+        #         "National Sanctuaries" = "aoi_fed_sanctuaries"))),
+        #       # `State`   = c(
+        #       #   "MPA Regions"          = "aoi_ca_mpargns"))),
+        #   leafletOutput("map_aoi")),
         tabPanel(
           "Time",
           dygraphOutput("plot_ts"),

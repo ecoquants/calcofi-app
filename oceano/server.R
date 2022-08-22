@@ -62,6 +62,21 @@ shinyServer(function(input, output, session) {
           options = layersControlOptions(collapsed = T))
     }
     
+    # map_side ----
+    output$map_side <- renderLeaflet({
+      message("output$map_side - beg")
+      
+      m <- leaflet(
+        options = leafletOptions(
+          zoomControl        = F,
+          attributionControl = F)) %>%
+        addProviderTiles(providers$Esri.OceanBasemap) %>% 
+        setView(-93.4, 37.4, 2)
+      
+      message("output$map_side - end")
+      m
+    })
+    
     # add draw toolbar
     if (input$sel_aoi_draw){
       m <- m %>%
@@ -79,45 +94,101 @@ shinyServer(function(input, output, session) {
     m })
   
   # * clicked feature ----
-  observe({
+  # observe({
+  #   
+  #   m <- leafletProxy("map_aoi")
+  #   
+  #   if (input$sel_aoi_category == "cc_stations"){
+  #     req(input$map_aoi_marker_click)
+  #     clk <- input$map_aoi_marker_click
+  #     
+  #     m %>%
+  #       clearGroup("selected") %>% 
+  #       addCircleMarkers(
+  #         data = pts_stations %>% 
+  #           filter(sta_id == clk$id),
+  #         # radius = 2, stroke = F, 
+  #         color = "yellow", #fillColor="yellow",
+  #         group = "selected",
+  #         label = ~sta_id,
+  #         labelOptions = labelOptions(
+  #           permanent = T),
+  #         layerId = ~glue("sel_{sta_id}"))
+  #   } else {
+  #     req(input$map_aoi_shape_click)
+  #     clk <- input$map_aoi_shape_click
+  #     
+  #     f <- st_read(con, input$sel_aoi_category)
+  #     
+  #     m %>% 
+  #       clearGroup("selected") %>% 
+  #       addPolygons(
+  #         data = f %>% 
+  #           filter(sanctuary == clk$id),
+  #         color = "yellow", 
+  #         opacity = 0.8, 
+  #         group = "selected",
+  #         label = ~sanctuary,
+  #         labelOptions = labelOptions(
+  #           permanent = T),
+  #         layerId = ~glue("sel_{sanctuary}"))
+  #   }
+  # })
+  
+  # *observe btn_mod_map ----
+  observeEvent(input$btn_mod_map, {
     
-    m <- leafletProxy("map_aoi")
+    #message("observe btn_mod_map - beg")
     
-    if (input$sel_aoi_category == "cc_stations"){
-      req(input$map_aoi_marker_click)
-      clk <- input$map_aoi_marker_click
+    showModal(modalDialog(
+      title     = "Modify Location",
+      footer    = modalButton("Close"),
+      easyClose = T,
+      size      = "l",
+      leafletOutput("mapeditor")))
+    
+    #message("observe btn_mod_map - end")
+  })
+  
+  # *mapeditor ----
+  output$mapeditor <- renderLeaflet({
+    librarian::shelf(leaflet.extras)
+    
+    message("output$mapeditor - beg")
+    
+    # m <- map_edit
+    m <- leaflet(
+      options = leafletOptions(
+        zoomControl = T,
+        attributionControl = F)) %>% 
+      addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      # addPolygons(data = ply_editable_0, group = "ply_editable") %>% 
+      setView(-93.4, 37.4, 4)
+    
+    m <- m %>% 
+      leaflet.extras::addDrawToolbar(
+        targetGroup = "ply_editable",
+        editOptions = leaflet.extras::editToolbarOptions(
+          # edit = F,
+          # remove = T,
+          selectedPathOptions = selectedPathOptions()),
+        circleOptions = F,
+        circleMarkerOptions = F,
+        markerOptions = F,
+        polylineOptions = F,
+        singleFeature = T) 
+    
+    ply <- values$ply
+    if (!is.null(ply)){
+      bb <- sf::st_bbox(ply)
       
-      m %>%
-        clearGroup("selected") %>% 
-        addCircleMarkers(
-          data = pts_stations %>% 
-            filter(sta_id == clk$id),
-          # radius = 2, stroke = F, 
-          color = "yellow", #fillColor="yellow",
-          group = "selected",
-          label = ~sta_id,
-          labelOptions = labelOptions(
-            permanent = T),
-          layerId = ~glue("sel_{sta_id}"))
-    } else {
-      req(input$map_aoi_shape_click)
-      clk <- input$map_aoi_shape_click
-      
-      f <- st_read(con, input$sel_aoi_category)
-      
-      m %>% 
-        clearGroup("selected") %>% 
-        addPolygons(
-          data = f %>% 
-            filter(sanctuary == clk$id),
-          color = "yellow", 
-          opacity = 0.8, 
-          group = "selected",
-          label = ~sanctuary,
-          labelOptions = labelOptions(
-            permanent = T),
-          layerId = ~glue("sel_{sanctuary}"))
+      m <- m %>% 
+        addPolygons(data = ply, group = "ply_editable") # %>%
+      # flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
     }
+    
+    message("output$mapeditor - end")
+    m
   })
   
   # * save drawn poly ----
