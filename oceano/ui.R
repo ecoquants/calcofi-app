@@ -79,11 +79,7 @@ dashboardPage(
         #       #   "MPA Regions"          = "aoi_ca_mpargns"))),
         #   leafletOutput("map_aoi")),
         tabPanel(
-          "Time",
-          dygraphOutput("plot_ts"),
-          downloadLink("dl_csv", "Download data (*.csv)")),
-        tabPanel(
-          "Space",
+          "Map",
           selectInput(
             "sel_cruise",
             "Cruise",
@@ -95,7 +91,11 @@ dashboardPage(
           #downloadLink("dl_tif", "Download data (*.tif)")
         ),
         tabPanel(
-          "Depth",
+          "Time series",
+          dygraphOutput("plot_ts"),
+          downloadLink("dl_csv", "Download data (*.csv)")),
+        tabPanel(
+          "Depth Profile",
           "TODO")
         ))
 )
