@@ -62,21 +62,6 @@ shinyServer(function(input, output, session) {
           options = layersControlOptions(collapsed = T))
     }
     
-    # map_side ----
-    output$map_side <- renderLeaflet({
-      message("output$map_side - beg")
-      
-      m <- leaflet(
-        options = leafletOptions(
-          zoomControl        = F,
-          attributionControl = F)) %>%
-        addProviderTiles(providers$Esri.OceanBasemap) %>% 
-        setView(-93.4, 37.4, 2)
-      
-      message("output$map_side - end")
-      m
-    })
-    
     # add draw toolbar
     if (input$sel_aoi_draw){
       m <- m %>%
@@ -92,6 +77,22 @@ shinyServer(function(input, output, session) {
     }
     
     m })
+  
+  # map_side ----
+  output$map_side <- renderLeaflet({
+    # message("output$map_side - beg")
+    
+    m <- leaflet(
+      options = leafletOptions(
+        zoomControl        = F,
+        attributionControl = F)) %>%
+      # addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      addProviderTiles(providers$Stamen.TonerLite) %>% 
+      setView(-93.4, 37.4, 2)
+    
+    # message("output$map_side - end")
+    m
+  })
   
   # * clicked feature ----
   # observe({

@@ -42,13 +42,18 @@ dashboardPage(
         "avg +/- 45%",
         "avg +/- max",
         "median +/- 40%")),
-        wellPanel(
-          h5(icon("map-marked"), "Location"),
-          div(
-            class="shiny-input-container",
-            leafletOutput("map_side", height = 200)),
-          actionButton(
-            "btn_mod_map", "Add", icon = icon("plus"), width = "170px"))
+        #wellPanel(
+    div(
+      class="shiny-input-container",
+      htmltools::tag(
+        "label", 
+        # htmltools::tagList(
+        # icon("map-marked"), 
+        "Location"),
+      leafletOutput("map_side", height = 200) ),
+    actionButton(
+      "btn_mod_map", "Add", icon = icon("plus"), width = "200px")
+        #)
     ),
     
     dashboardBody(

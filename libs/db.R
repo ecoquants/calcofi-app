@@ -22,5 +22,3 @@ con <- DBI::dbConnect(
 
 # test connection:
 # dbListTables(con)
-
-q <- function(sql){ dbSendQuery(con, sql) }
