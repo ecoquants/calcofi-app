@@ -9,10 +9,12 @@ librarian::shelf(
 # devtools::load_all(here("../calcofi4r"))                # debug
 select <- dplyr::select
 options(readr.show_col_types = F)
+#shinyOptions(cache = cachem::cache_disk(PATH))
+# touch /share/github/apps_dev-demo/oceano/restart
 
 source(here("libs/db.R"))
 
-dir_cache <- "/tmp"
+dir_cache <- "/tmp" # sudo mkdir /tmp/cache; sudo chmod -R 777 /tmp/cache
 
 # pts_stations
 # pts_stations <- st_read(con, "stations"). # n = 50,856 

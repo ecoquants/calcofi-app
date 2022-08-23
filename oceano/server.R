@@ -352,7 +352,7 @@ shinyServer(function(input, output, session) {
     # DEBUG
     # input = list(
     #   sel_var         = "ctd_bottles.t_degc",
-    #   sel_val         = "avg",
+    #   sel_val         = "n_obs",
     #   sel_res_km      = 20,
     #   sel_depth_range = c(0, 5351),
     #   sel_date_range  = as.Date(c("1949-02-28", "2020-01-26")))
@@ -378,18 +378,18 @@ shinyServer(function(input, output, session) {
     f_tif   <- glue("{dir_cache}/map_{hash}.tif")
     # f_tif <- "/tmp/api_raster_dd83f5a7.tif"
     
+    # variable
+    v <- tbl(con, "field_labels") %>% 
+      filter(table_field == !!input$sel_var) %>% # ctd_bottles.t_degc
+      collect() %>% 
+      separate(table_field, into=c("tbl", "fld"), sep="\\.", remove=F)
+    stopifnot(nrow(v) == 1)
+    
     if (file.exists(f_tif)){
       message(glue("reading from cache: {basename(f_tif)}"))
       # r <- readBin(f_tif, "raw", n = file.info(f_tif)$size) # %>% 
       #return()
     } else {
-      
-      # variable
-      v <- tbl(con, "field_labels") %>% 
-        filter(table_field == !!input$sel_var) %>% # ctd_bottles.t_degc
-        collect() %>% 
-        separate(table_field, into=c("tbl", "fld"), sep="\\.", remove=F)
-      stopifnot(nrow(v) == 1)
       
       # construct SQL
       q_from <- case_when(
@@ -441,15 +441,18 @@ shinyServer(function(input, output, session) {
       r <- raster(here(glue("../scripts/data/r_sta-cnt_{res_km}km-mer.tif")))
       
       fxn <- function(x, ...){
-        switch(
+        y <- switch(
           value,
           avg   = mean(x, na.rm = T), # TODO: fix based on n_obs
           sd    = mean(x, na.rm = T), # TODO: fix based on n_obs
           min   = min(x, na.rm = T),
           max   = max(x, na.rm = T),
-          n_obs = sum(x, na.rm = T))}
-      z <- rasterize(as_Spatial(pts_mer), r, value, fun=fxn)
-      
+          n_obs = sum(x, na.rm = T))
+        # message(glue("{y}: {paste(x, collapse = ', ')}"))
+        as.double(y)}
+      value = "n_obs"
+      z <- raster::rasterize(as_Spatial(pts_mer), r, value, fun=fxn)
+
       message(glue("writing to: {basename(f_tif)}")) # api_raster_a0f732d3.tif
       writeRaster(z, f_tif, overwrite=T)
     }

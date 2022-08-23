@@ -14,8 +14,8 @@ con <- DBI::dbConnect(
   RPostgres::Postgres(),
   dbname   = "gis",
   # host     = "db.calcofi.io", # from laptop to server
-  host     = "localhost",     # from laptop to local db
-  # host     = "postgis",         # from server to docker containers
+  # host     = "localhost",     # from laptop to local db
+  host     = "postgis",         # from server to docker containers
   port     = 5432,
   user     = "admin",
   password = readLines(db_pass_txt))
