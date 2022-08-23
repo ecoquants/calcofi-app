@@ -83,6 +83,9 @@ dashboardPage(
         downloadLink("dl_csv", "Download data (*.csv)")),
       tabPanel(
         title = "Depth Profile", value = "depth",
-        "TODO")
+        "Interactive Depth Profiles coming soon...",br(),
+        "similar to ", a(href="https://shiny.calcofi.io/capstone/", "Capstone app"),br(),
+        img(src='depth_profile_capstone.png') # , align = "right"),
+        )
     ))
 )
