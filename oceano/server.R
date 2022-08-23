@@ -248,13 +248,17 @@ shinyServer(function(input, output, session) {
         polylineOptions = F,
         singleFeature = T) 
     
-    ply <- values$ply
+    ply <- values$ply_draw
     if (!is.null(ply)){
       bb <- sf::st_bbox(ply)
       
       m <- m %>% 
         addPolygons(data = ply, group = "ply_editable") # %>%
       # flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+      
+      updateActionButton(
+        session,
+        "btn_mod_map", "Modify", icon=icon("cog"))
     }
     
     message("output$mapeditor - end")
