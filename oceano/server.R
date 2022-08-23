@@ -6,6 +6,7 @@ shinyServer(function(input, output, session) {
     ply_draw = NULL,
     map_r    = NULL)
   
+  # ui_stats ----
   output$ui_stats <- renderUI({
     # tagList(
     #   sliderInput("n", "N", 1, 1000, 500),
@@ -13,22 +14,38 @@ shinyServer(function(input, output, session) {
     # )
     
     if (input$tabs == "time"){
-      ui <- selectInput(
-        "sel_stats",
-        "Statistics (to summarize)",
-        # c("average +/- standard deviation",
-        #   "average + 95% - 5%",
-        #   "average + maximum - minimum",
-        #   "median + 90% - 10%")) ),
-        c("avg +/- sd",
-          "avg +/- 45%",
-          "avg +/- max",
-          "median +/- 40%"))
+      ui <- tagList(
+        selectInput(
+          "sel_stats",
+          "Statistics (to summarize)",
+          # c("average +/- standard deviation",
+          #   "average + 95% - 5%",
+          #   "average + maximum - minimum",
+          #   "median + 90% - 10%")) ),
+          c("avg +/- sd",
+            "avg +/- 45%",
+            "avg +/- max",
+            "median +/- 40%")),
+        selectInput(
+          "sel_time_step",
+          "Temporal resolution",
+          c("decade",
+            "year",
+            "year.quarter","year.month","year.week",
+            "date",
+            # climatic
+            "quarter","month","week","julianday","hour"),
+          "year") )
     } else {
-      ui <- selectInput(
-        "sel_stat",
-        "Value",
-        c("avg", "min", "max", "# obs"))
+      ui <- tagList(
+        selectInput(
+          "sel_val",
+          "Value",
+          c("avg", "sd", "min", "max", "n_obs")),
+        selectInput(
+          "sel_res_km",
+          "Spatial Resolution (km)",
+          c(5, 20, 50), selected = 50) )
     }
       
     ui
@@ -110,13 +127,26 @@ shinyServer(function(input, output, session) {
   output$map_side <- renderLeaflet({
     # message("output$map_side - beg")
     
+    r <- raster(here("../scripts/data/r_sta-cnt_50km-mer.tif"))
+    # pal <- colorNumeric("Spectral", values(r), na.color = "transparent")
+    pal <- colorNumeric(
+      gray.colors(10, start=0.01, end = 0.99), values(r), na.color = "transparent")
+    # gray.colors(n, start = 0.3, end = 0.9, gamma = 2.2, alpha, rev = FALSE)
+    
+    
     m <- leaflet(
       options = leafletOptions(
         zoomControl        = F,
         attributionControl = F)) %>%
-      # addProviderTiles(providers$Esri.OceanBasemap) %>% 
-      addProviderTiles(providers$Stamen.TonerLite) %>% 
-      setView(-93.4, 37.4, 2)
+      addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      # addProviderTiles(providers$Stamen.TonerLite) %>% 
+      addRasterImage(
+        r, project = F,
+        colors = pal) %>% 
+      addLegend(
+        pal = pal, opacity = 0.9,
+        values = values(r), title = "n_obs")
+      # setView(-93.4, 37.4, 2)
     
     # message("output$map_side - end")
     m
@@ -185,14 +215,25 @@ shinyServer(function(input, output, session) {
     
     message("output$mapeditor - beg")
     
+    r <- raster(here("../scripts/data/r_sta-cnt_50km-mer.tif"))
+    pal <- colorNumeric(
+      gray.colors(10, start=0.01, end = 0.99), values(r), na.color = "transparent")
+    
     # m <- map_edit
     m <- leaflet(
       options = leafletOptions(
         zoomControl = T,
         attributionControl = F)) %>% 
       addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      addRasterImage(
+        r, project = F,
+        colors = pal, opacity = 0.5) %>% 
+      addLegend(
+        pal = pal, opacity = 0.5,
+        values = values(r), title = "n_obs")
+    
       # addPolygons(data = ply_editable_0, group = "ply_editable") %>% 
-      setView(-93.4, 37.4, 4)
+      # setView(-93.4, 37.4, 4)
     
     m <- m %>% 
       leaflet.extras::addDrawToolbar(
@@ -221,23 +262,45 @@ shinyServer(function(input, output, session) {
   })
   
   # * save drawn poly ----
+  # observe({
+  #   #use the draw_stop event to detect when users finished drawing
+  #   # https://github.com/bhaskarvk/leaflet.extras/blob/master/inst/examples/shiny/draw-events/app.R
+  #   req(input$map_aoi_draw_all_features)
+  #   
+  #   feature <- isolate(input$map_aoi_draw_all_features$features[[1]])
+  #   ply_json <- geojsonio::as.json(feature$geometry)
+  #   ply <- st_read(ply_json, quiet = T)
+  #   values$ply_draw <- ply
+  # 
+  #   leafletProxy("map_aoi") %>%
+  #     clearShapes()
+  #   
+  #   if (!is.null(ply)){
+  #     bb <- sf::st_bbox(ply)
+  #     
+  #     leafletProxy("map_aoi") %>%
+  #       addPolygons(data = ply, group = "ply_draw") %>% 
+  #       flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+  #   }
+  #   
+  # })
   observe({
     #use the draw_stop event to detect when users finished drawing
     # https://github.com/bhaskarvk/leaflet.extras/blob/master/inst/examples/shiny/draw-events/app.R
-    req(input$map_aoi_draw_all_features)
+    req(input$mapeditor_draw_all_features)
     
-    feature <- isolate(input$map_aoi_draw_all_features$features[[1]])
+    feature <- isolate(input$mapeditor_draw_all_features$features[[1]])
     ply_json <- geojsonio::as.json(feature$geometry)
     ply <- st_read(ply_json, quiet = T)
     values$ply_draw <- ply
 
-    leafletProxy("map_aoi") %>%
+    leafletProxy("map_side") %>%
       clearShapes()
     
     if (!is.null(ply)){
       bb <- sf::st_bbox(ply)
       
-      leafletProxy("map_aoi") %>%
+      leafletProxy("map_side") %>%
         addPolygons(data = ply, group = "ply_draw") %>% 
         flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
     }
@@ -245,19 +308,188 @@ shinyServer(function(input, output, session) {
   })
   
   # map_r ----
-  output$map_r <- renderLeaflet({
+  # output$map_r <- renderLeaflet({
+  #   
+  #   # base map
+  #   b <- st_bbox(pts_stations)
+  #   m <- leaflet() %>%
+  #     addProviderTiles(
+  #       providers$Stamen.TonerLite,
+  #       options = providerTileOptions(noWrap = TRUE)) %>% 
+  #     fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
+  #   
+  #   m
+  # })
+  
+  # map ----
+  output$map <- renderLeaflet({
+    req(input$sel_val)
+    
+    # TODO: values$ply_draw
+    
+    # variable = "ctd_bottles.t_deg_c", 
+    # depth_m_min = 0, depth_m_max = 100){
+    # cruise_id = "2020-01-05-C-33RL", 
+      # @serializer tiff
+      # test values
+      # variable = "ctd_bottles.t_deg_c"; cruise_id = "2020-01-05-C-33RL"; depth_m_min = 0; depth_m_max = 10
+      # variable = "ctd_bottles.t_deg_c"; cruise_id = "2020-01-05-C-33RL"; depth_m_min = 0; depth_m_max = 100
+      # variable = "ctd_bottles_dic.bottle_o2_mmol_kg"; cruise_id = "1949-03-01-C-31CR"; variable = ""; depth_m_min = 0; depth_m_max = 1000
+      # variable = "ctd_bottles.t_degc"; cruise_id = "2020-01-05-C-33RL"; depth_m_min = 0L; depth_m_max = 5351L
+      # check input arguments ----
+      
+      # args_in <- as.list(match.call(expand.dots=FALSE))[-1]
+    
+    # DEBUG
+    # values = list(ply_draw = NULL)
+    
+    if (is.null(values$ply_draw)){
+      aoi_wkt <- NULL
+    } else {
+      aoi_wkt <- st_as_text(values$ply_draw$geometry)
+    }
+    
+    # DEBUG
+    # input = list(
+    #   sel_var         = "ctd_bottles.t_degc",
+    #   sel_val         = "avg",
+    #   sel_res_km      = 20,
+    #   sel_depth_range = c(0, 5351),
+    #   sel_date_range  = as.Date(c("1949-02-28", "2020-01-26")))
+    
+    variable    = input$sel_var
+    value       = input$sel_val
+    res_km      = input$sel_res_km
+    depth_m_min = input$sel_depth_range[1]
+    depth_m_max = input$sel_depth_range[2]
+    date_beg    = input$sel_date_range[1] 
+    date_end    = input$sel_date_range[2]
+    args_in <- list(
+      variable    = variable,
+      value       = value,
+      res_km      = res_km,
+      aoi_wkt     = aoi_wkt,
+      depth_m_min = depth_m_min, 
+      depth_m_max = depth_m_max,
+      date_beg    = date_beg, 
+      date_end    = date_end)
+      
+    hash    <- digest(args_in, algo="crc32")
+    f_tif   <- glue("{dir_cache}/map_{hash}.tif")
+    # f_tif <- "/tmp/api_raster_dd83f5a7.tif"
+    
+    if (file.exists(f_tif)){
+      message(glue("reading from cache: {basename(f_tif)}"))
+      # r <- readBin(f_tif, "raw", n = file.info(f_tif)$size) # %>% 
+      #return()
+    } else {
+      
+      # variable
+      v <- tbl(con, "field_labels") %>% 
+        filter(table_field == !!input$sel_var) %>% # ctd_bottles.t_degc
+        collect() %>% 
+        separate(table_field, into=c("tbl", "fld"), sep="\\.", remove=F)
+      stopifnot(nrow(v) == 1)
+      
+      # construct SQL
+      q_from <- case_when(
+        v$tbl == "ctd_bottles" ~ "ctd_casts JOIN ctd_bottles USING (cast_count)",
+        v$tbl == "ctd_dic"     ~ "ctd_casts JOIN ctd_bottles USING (cast_count) JOIN ctd_dic USING (btl_cnt)")
+      
+      q_where_depth = case_when(
+        !is.null(depth_m_min) & !is.null(depth_m_max) ~ glue2("depthm >= {depth_m_min} AND depthm <= {depth_m_max}"),
+        is.null(depth_m_min) & !is.null(depth_m_max) ~ glue2("depthm <= {depth_m_max}"),
+        !is.null(depth_m_min) &  is.null(depth_m_max) ~ glue2("depthm >= {depth_m_min}"),
+        TRUE ~ "TRUE")
+      
+      q_where_date = glue("date >= '{date_beg}' AND date <= '{date_end}'")
+      
+      q_where_aoi = ifelse(
+        !is.null(aoi_wkt),
+        glue("ST_Intersects(ST_GeomFromText('{aoi_wkt}', 4326), ctd_casts.geom)"),
+        "TRUE")
+      
+      q <- glue(
+        "SELECT 
+          AVG({v$fld})    AS avg, 
+          STDDEV({v$fld}) AS sd, 
+          MIN({v$fld})    AS min, 
+          MIN({v$fld})    AS max, 
+          COUNT(*)        AS n_obs,
+          geom
+        FROM {q_from}
+        WHERE 
+          {q_where_depth} AND
+          {q_where_date} AND
+          {q_where_aoi} 
+        GROUP BY geom")
+      message(q)
+      pts_gcs <- st_read(con, query=q)
+      
+      # TODO: figure out why all points are repeating and if that makes sense
+      # cruise_id = "2020-01-05-C-33RL"; variable = "ctd_bottles.t_deg_c"; depth_m_min = 0; depth_m_max = 10
+      # table(pts$n_obs)
+      #    3  4  5  6 
+      #   52 36 13  2
+      
+      # transform from geographic coordinate system (gcs) 
+      #   to web mercator (mer) for direct use with leaflet::addRasterImage()
+      pts_mer <- st_transform(pts_gcs, 3857)
+      # h <- st_convex_hull(st_union(pts_mer)) %>% st_as_sf() %>% mutate(one = 1)
+      # library(mapview); mapviewOptions(fgb = F); mapview(h)
+      # r <- raster(as_Spatial(h), res=1000, crs=3857)
+      r <- raster(here(glue("../scripts/data/r_sta-cnt_{res_km}km-mer.tif")))
+      
+      fxn <- function(x, ...){
+        switch(
+          value,
+          avg   = mean(x, na.rm = T), # TODO: fix based on n_obs
+          sd    = mean(x, na.rm = T), # TODO: fix based on n_obs
+          min   = min(x, na.rm = T),
+          max   = max(x, na.rm = T),
+          n_obs = sum(x, na.rm = T))}
+      z <- rasterize(as_Spatial(pts_mer), r, value, fun=fxn)
+      
+      message(glue("writing to: {basename(f_tif)}")) # api_raster_a0f732d3.tif
+      writeRaster(z, f_tif, overwrite=T)
+    }
+    r <- raster(f_tif)
     
     # base map
-    b <- st_bbox(pts_stations)
-    m <- leaflet() %>%
-      addProviderTiles(
-        providers$Stamen.TonerLite,
-        options = providerTileOptions(noWrap = TRUE)) %>% 
+    # b <- st_bbox(pts_stations)
+    # m <- leaflet() %>%
+    #   addProviderTiles(
+    #     providers$Stamen.TonerLite,
+    #     options = providerTileOptions(noWrap = TRUE)) %>% 
+    #   fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
+    
+    alpha = 0.8
+    b <- st_bbox(raster::projectExtent(r, crs = sp::CRS(leaflet:::epsg4326)))
+    pal <- colorNumeric(v$color_palette, values(r), na.color = "transparent") # , alpha = alpha)
+    
+    m <- leaflet(
+      options = leafletOptions(
+        # zoomControl        = F,
+        attributionControl = F)) %>%
+      # addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      addProviderTiles(providers$Stamen.TonerLite) %>% 
+      addRasterImage(
+        r, project = F, 
+        colors = pal, opacity = alpha) %>% 
+      addLegend(pal = pal, values = values(r), title = value) %>% 
+      # flyToBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
       fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
     
+    ply <- values$ply_draw
+    if (!is.null(ply)){
+      bb <- sf::st_bbox(ply)
+      
+      m <- m %>%
+        addPolygons(data = ply, group = "ply_draw", fill=F) %>% 
+        flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+    }
     m
   })
-  
   
   output$download_r <- renderUI({
     f_tif <- get_r_path()
@@ -276,6 +508,28 @@ shinyServer(function(input, output, session) {
       depth_m_min = input$sel_depth_range[1], 
       depth_m_max = input$sel_depth_range[2])
   })
+  
+  # *get_map_args ----
+  get_map_args <- reactive({
+    # handle special inputs
+    if (is.null(values$ply_draw)){
+      aoi_wkt <- NULL
+    } else {
+      aoi_wkt <- st_as_text(values$ply_draw$geometry)
+    }
+    
+    calcofi4r::get_timeseries(
+      variable    = input$sel_var,
+      value       = input$sel_val,
+      aoi_wkt     = aoi_wkt,
+      depth_m_min = input$sel_depth_range[1], 
+      depth_m_max = input$sel_depth_range[2],
+      date_beg    = input$sel_date_range[1], 
+      date_end    = input$sel_date_range[2], 
+      time_step   = input$sel_time_step,
+      stats       = input_stats)
+  })
+  
   get_r_path <- reactive({
     req(input$sel_cruise, input$sel_var)
     

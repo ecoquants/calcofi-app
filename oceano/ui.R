@@ -22,16 +22,6 @@ dashboardPage(
       ctdcast_dates$min,
       ctdcast_dates$max,
       startview = "year"),
-    selectInput(
-      "sel_time_step",
-      "Time step (to summarize)",
-      c("decade",
-        "year",
-        "year.quarter","year.month","year.week",
-        "date",
-        # climatic
-        "quarter","month","week","julianday","hour"),
-      "year"),
     #wellPanel(
     div(
       class="shiny-input-container",
@@ -76,13 +66,14 @@ dashboardPage(
       #   leafletOutput("map_aoi")),
       tabPanel(
         title = "Map", value = "map",
-        selectInput(
-          "sel_cruise",
-          "Cruise",
-          sort(d_cruises$cruiseid, decreasing=T)),
-        actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
-        br(),
-        leafletOutput("map_r")
+        # selectInput(
+        #   "sel_cruise",
+        #   "Cruise",
+        #   sort(d_cruises$cruiseid, decreasing=T)),
+        # actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
+        # br(),
+        # leafletOutput("map_r")
+        leafletOutput("map"),
         # TODO: fix dl_tif, not working
         #downloadLink("dl_tif", "Download data (*.tif)")
       ),
