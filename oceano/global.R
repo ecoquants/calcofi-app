@@ -23,7 +23,10 @@ pts_stations <- st_read(                    # n =  6,343
   query = "
     SELECT DISTINCT ON (sta_id)
       line || ' ' || station AS sta_id, line, station, longitude, latitude, geom
-    FROM stations")
+    FROM stations
+    WHERE 
+      line >= 76.7 AND 
+      line <= 93.3")
 
 # ctdcast_ranges
 # TODO: add indexes in db to:

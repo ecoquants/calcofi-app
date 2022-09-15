@@ -425,7 +425,7 @@ shinyServer(function(input, output, session) {
         WHERE 
           {q_where_depth} AND
           {q_where_date} AND
-          {q_where_aoi} 
+          {q_where_aoi}
         GROUP BY geom")
       message(q)
       pts_gcs <- st_read(con, query=q)
@@ -454,7 +454,7 @@ shinyServer(function(input, output, session) {
           n_obs = sum(x, na.rm = T))
         # message(glue("{y}: {paste(x, collapse = ', ')}"))
         as.double(y)}
-      value = "n_obs"
+      # value = "n_obs"
       z <- raster::rasterize(as_Spatial(pts_mer), r, value, fun=fxn)
 
       message(glue("writing to: {basename(f_tif)}")) # api_raster_a0f732d3.tif
