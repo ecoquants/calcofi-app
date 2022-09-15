@@ -20,5 +20,7 @@ con <- DBI::dbConnect(
   user     = "admin",
   password = readLines(db_pass_txt))
 
+q <- function(sql){ dbSendQuery(con, sql) }
+
 # test connection:
 # dbListTables(con)
