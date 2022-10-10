@@ -2,8 +2,9 @@
 # devtools::install_local("/share/github/calcofi4r")
 librarian::shelf(
   calcofi/calcofi4r,
-  digest, dygraphs, glue, geojsonio, gstat, here, httr2, leaflet, leaflet.extras, 
-  raster, readr, sf, shiny, shinydashboard, shinyWidgets, tidyr)
+  digest, dygraphs, glue, geojsonio, gstat, here, httr2, 
+  leaflegend, leaflet, leaflet.extras, 
+  raster, readr, scales, sf, shiny, shinydashboard, shinyWidgets, tidyr)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug

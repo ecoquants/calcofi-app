@@ -340,7 +340,7 @@ shinyServer(function(input, output, session) {
       # variable = "ctd_bottles.t_deg_c"; cruise_id = "2020-01-05-C-33RL"; depth_m_min = 0; depth_m_max = 100
       # variable = "ctd_bottles_dic.bottle_o2_mmol_kg"; cruise_id = "1949-03-01-C-31CR"; variable = ""; depth_m_min = 0; depth_m_max = 1000
       # variable = "ctd_bottles.t_degc"; cruise_id = "2020-01-05-C-33RL"; depth_m_min = 0L; depth_m_max = 5351L
-      # check input arguments ----
+      # check input arguments
       
       # args_in <- as.list(match.call(expand.dots=FALSE))[-1]
     
@@ -460,8 +460,57 @@ shinyServer(function(input, output, session) {
       message(glue("writing to: {basename(f_tif)}")) # api_raster_a0f732d3.tif
       writeRaster(z, f_tif, overwrite=T)
     }
+    # DEBUG
+    # message(glue("f_tif: {f_tif}"))
+    # message(glue("value: {value}"))
+    # value = "avg"
+    # v = list(
+    #   active= TRUE,
+    #   category= "Oceanographic",
+    #   table_field= "ctd_bottles.t_degc",
+    #   tbl= "ctd_bottles",
+    #   fld= "t_degc",
+    #   plot_title= "Temperature",
+    #   plot_label= "Temperature (C)",
+    #   plot_color= "red",
+    #   color_palette = "Reds")
+    # f_tif = "/tmp/map_74bb9e9a.tif"
+    
     r <- raster(f_tif)
     
+    # * effort circles ----
+    pts_sta <- tbl(con, "stations_order") %>% 
+      left_join(
+        tbl(con, "ctd_casts"),
+        by = c(
+          "LINE" = "rptline", 
+          "STA"  = "rptsta")) %>% 
+      rename(
+        sta_line = LINE, 
+        sta_sta  = STA,
+        lon      = `LON (DEC)`,
+        lat      = `LAT (DEC)`,
+        order    = `ORDER OCC`) %>% 
+      group_by(sta_line, sta_sta, lon, lat) %>% 
+      summarize(
+        n_obs    = n(),
+        date_min = min(date, na.rm=T),
+        date_max = max(date, na.rm=T), 
+        .groups = "drop") %>% 
+      collect() %>% 
+      st_as_sf(
+        coords = c("lon", "lat"), remove = F,
+        crs = 4326)
+    eff_symbols <- makeSymbolsSize(
+      values = pts_sta$n_obs,
+      shape = "circle",
+      color = "black",
+      fillColor = F,
+      opacity = .5,
+      baseSize = 10)
+    pts_sta$n_obs <- as.numeric(pts_sta$n_obs)
+    # mapview::mapView(pts_sta, cex = "n_obs")
+
     # base map
     # b <- st_bbox(pts_stations)
     # m <- leaflet() %>%
@@ -476,15 +525,31 @@ shinyServer(function(input, output, session) {
     
     m <- leaflet(
       options = leafletOptions(
-        # zoomControl        = F,
         attributionControl = F)) %>%
-      # addProviderTiles(providers$Esri.OceanBasemap) %>% 
-      addProviderTiles(providers$Stamen.TonerLite) %>% 
+      addProviderTiles(providers$Esri.OceanBasemap, group = "Ocean") %>% 
+      addProviderTiles(providers$Stamen.TonerLite, group = "B&W") %>% 
       addRasterImage(
-        r, project = F, 
+        r, project = F, group = glue("grid of {value}"),
         colors = pal, opacity = alpha) %>% 
+      addSymbolsSize(
+        data = pts_sta, lat = ~lat, lng = ~lon,        
+        group = "circles of effort",
+        values = ~n_obs,
+        shape = "circle", baseSize = 10,
+        color = "black", opacity = .5, fillOpacity = 0) %>%
       addLegend(pal = pal, values = values(r), title = value) %>% 
-      # flyToBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
+      addLegendSize(
+        values = pts_sta$n_obs,
+        title = "effort (n_obs)", position = "topright", orientation = "vertical",
+        shape = "circle", baseSize = 5, breaks = 5,
+        color = "black", opacity = .5, fillOpacity = 0) %>% 
+      addLayersControl(
+        position = "topleft",
+        baseGroups = c("Ocean", "B&W"),
+        overlayGroups = c(
+          glue("grid of {value}"), 
+          "circles of effort"),
+        options = layersControlOptions(collapsed = FALSE)) %>% 
       fitBounds(b[['xmin']], b[['ymin']], b[['xmax']], b[['ymax']])
     
     ply <- values$ply_draw
