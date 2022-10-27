@@ -9,6 +9,7 @@ librarian::shelf(
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug
 select <- dplyr::select
+addLegend <- leaflet::addLegend
 options(readr.show_col_types = F)
 #shinyOptions(cache = cachem::cache_disk(PATH))
 # touch /share/github/apps_dev-demo/oceano/restart

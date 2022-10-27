@@ -13,19 +13,27 @@ shinyServer(function(input, output, session) {
     #   textInput("label", "Label")
     # )
     
+    sel_qtr_m <- selectInput(
+      "sel_qtr",
+      "Season",
+      c(Winter = 1, 
+        Spring = 2,
+        Summer = 3,
+        Fall   = 4),
+      selected = 1:2,
+      multiple = T)
+    # TODO: sel_qtr_s single for 'Transect profile'
+    
     if (input$tabs == "time"){
       ui <- tagList(
         selectInput(
           "sel_stats",
           "Statistics (to summarize)",
-          # c("average +/- standard deviation",
-          #   "average + 95% - 5%",
-          #   "average + maximum - minimum",
-          #   "median + 90% - 10%")) ),
           c("avg +/- sd",
             "avg +/- 45%",
             "avg +/- max",
             "median +/- 40%")),
+        sel_qtr_m,
         selectInput(
           "sel_time_step",
           "Temporal resolution",
@@ -42,6 +50,7 @@ shinyServer(function(input, output, session) {
           "sel_val",
           "Value",
           c("avg", "sd", "min", "max", "n_obs")),
+        sel_qtr_m,
         selectInput(
           "sel_res_km",
           "Spatial Resolution (km)",
@@ -526,8 +535,8 @@ shinyServer(function(input, output, session) {
     m <- leaflet(
       options = leafletOptions(
         attributionControl = F)) %>%
-      addProviderTiles(providers$Esri.OceanBasemap, group = "Ocean") %>% 
       addProviderTiles(providers$Stamen.TonerLite, group = "B&W") %>% 
+      addProviderTiles(providers$Esri.OceanBasemap, group = "Ocean") %>% 
       addRasterImage(
         r, project = F, group = glue("grid of {value}"),
         colors = pal, opacity = alpha) %>% 
@@ -545,7 +554,7 @@ shinyServer(function(input, output, session) {
         color = "black", opacity = .5, fillOpacity = 0) %>% 
       addLayersControl(
         position = "topleft",
-        baseGroups = c("Ocean", "B&W"),
+        baseGroups = c("B&W", "Ocean"),
         overlayGroups = c(
           glue("grid of {value}"), 
           "circles of effort"),
