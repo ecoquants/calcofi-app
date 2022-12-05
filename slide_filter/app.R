@@ -1,7 +1,10 @@
 librarian::shelf(
-  crosstalk, dplyr, ggplot2, lubridate, plotly, readr, shiny)
+  crosstalk, dplyr, ggplot2, here, lubridate, plotly, readr, shiny)
 
-load("~/Github/CalCOFI/calcofi4r/data/cc_bottle.rda")
+cc_bottle_rda <- here("../calcofi4r/data/cc_bottle.rda")
+
+stopifnot(file.exists(cc_bottle_rda))
+load(cc_bottle_rda)
 set.seed(42)
 
 d_0 <- cc_bottle %>% 
