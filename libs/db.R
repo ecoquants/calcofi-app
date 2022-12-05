@@ -6,6 +6,13 @@ if (!require("librarian")){
 librarian::shelf(
   DBI, dbplyr, dplyr, here, RPostgres)
 
+is_server <- Sys.info()["sysname"] == "Linux"
+host <- ifelse(
+  is_server,
+  "postgis",   # from rstudio to postgis docker container on server
+  "localhost") # from laptop to locally tunneled connection to db container on server
+# for localhost db, see: https://github.com/calcofi/server#ssh-tunnel-connection-to-postgis-db
+
 # database connect ----
 db_pass_txt <- "~/.calcofi_db_pass.txt"
 stopifnot(file.exists(db_pass_txt))
@@ -13,9 +20,8 @@ stopifnot(file.exists(db_pass_txt))
 con <- DBI::dbConnect(
   RPostgres::Postgres(),
   dbname   = "gis",
-  # host     = "db.calcofi.io", # from laptop to server
-  # host     = "localhost",     # from laptop to local db
-  host     = "postgis",         # from server to docker containers
+  host     = host, 
+  host     = "localhost",     
   port     = 5432,
   user     = "admin",
   password = readLines(db_pass_txt))
