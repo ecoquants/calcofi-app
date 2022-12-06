@@ -42,6 +42,7 @@ ctdcast_depths <- dbGetQuery(
 # UNION
 # SELECT depthm FROM ctdcast_bottle_dic) x")
 
+
 # d_vars
 d_vars    <- calcofi4r::get_variables()
 d_cruises <- calcofi4r::get_cruises()

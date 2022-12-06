@@ -6,7 +6,7 @@ if (!require("librarian")){
 librarian::shelf(
   DBI, dbplyr, dplyr, here, RPostgres)
 
-is_server <- Sys.info()["sysname"] == "Linux"
+is_server <- Sys.info()[["sysname"]] == "Linux"
 host <- ifelse(
   is_server,
   "postgis",   # from rstudio to postgis docker container on server
@@ -21,7 +21,6 @@ con <- DBI::dbConnect(
   RPostgres::Postgres(),
   dbname   = "gis",
   host     = host, 
-  host     = "localhost",     
   port     = 5432,
   user     = "admin",
   password = readLines(db_pass_txt))

@@ -29,12 +29,13 @@ dashboardPage(
       "Location",
       list(
         "CalCOFI" = c(
-          `Extended stations` = "cc_ext",
-          `Core stations`     = "cc_cor",
-          `All stations`      = "cc_all"),
+          `Core`      = "cc_core",
+          `Extended`  = "cc_extended",
+          `Nearshore` = "cc_nearshore",
+          `Offshore`  = "cc_offshore"),
         "National Marine Sanctuaries" = c(
-          `Channel Islands`   = "onms_ci",
-          `Monterey Bay`      = "onms_mb"))),
+          `Channel Islands` = "onms_ci",
+          `Monterey Bay`    = "onms_mb"))),
     
     #wellPanel(
     div(
