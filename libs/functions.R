@@ -39,13 +39,13 @@ get_contour <- function(
   
   # test values
   # d <- dbGetQuery(con, glue("
-  #   SELECT 
+  #   SELECT
   #     ST_X(geom) AS x,
   #     ST_Y(geom) AS y,
   #     AVG(t_degc) AS z
-  #     FROM ctd_casts 
+  #     FROM ctd_casts
   #       JOIN ctd_bottles USING (cast_count)
-  #     WHERE 
+  #     WHERE
   #       (depthm BETWEEN {depth_m_min} AND {depth_m_max}) AND
   #       (date BETWEEN '{date_beg}' AND '{date_end}')
   #     GROUP BY geom"))
@@ -53,19 +53,38 @@ get_contour <- function(
   # range(d$z, na.rm=T) # 1.658276 30.353333
   
   # TODO: variable, value; use MATERIALIZED VIEW to combine all vars into single table in advance
-  rast_idw <- glue("z_idw_{hash}")
-  rast_idw_exists <- dbGetQuery(con, glue(
-    "SELECT EXISTS (
-      SELECT FROM pg_tables
-      WHERE 
-        schemaname = 'public' AND 
-        tablename  = '{rast_idw}')"))$exists
+  
+  # do once
+  # q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
+  # q <- dbSendStatement(
+  #   con,
+  #   "CREATE TABLE z_idw (
+  #     rid SERIAL PRIMARY KEY,
+  #     args_hash TEXT,
+  #     rast RASTER)")
+  # dbClearResult(q)
+  # q <- dbSendStatement(con,  "SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'")
+  # dbClearResult(q)
+  
+  # OLD
+  # rast_idw <- glue("z_idw_{hash}")
+  # rast_idw_exists <- dbGetQuery(con, glue(
+  #   "SELECT EXISTS (
+  #     SELECT FROM pg_tables
+  #     WHERE 
+  #       schemaname = 'public' AND 
+  #       tablename  = '{rast_idw}')"))$exists
+  rast_idw_exists <- tbl(con, "z_idw") |> 
+    filter(args_hash == hash) |> 
+    collect() |> 
+    nrow() > 0
+  
   if (!rast_idw_exists){
-    q <- dbSendStatement(con,  "SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'")
-    dbClearResult(q)
     # dbSendQuery(con,  glue("DROP TABLE IF EXISTS {rast_idw}"))
     sql <- glue("
-      CREATE TABLE {rast_idw} AS
+      INSERT INTO z_idw (
+        args_hash, 
+        rast)
       WITH 
       aoi AS (
         SELECT ST_Union(geom) AS geom
@@ -93,7 +112,9 @@ get_contour <- function(
       inputs AS (
         SELECT
           0.1::float8 AS pixelsize,
-          'invdist:power:5.5:smoothing:2.0' AS algorithm,
+          -- https://gdal.org/programs/gdal_grid.html#interpolation-algorithms
+          -- 'invdist:power:5.5:smoothing:2.0' AS algorithm,
+          'invdist:power:2.0:smoothing:2.0' AS algorithm, -- default parameters
           ST_Collect(pts.geom) AS geom,
           ST_Expand(ST_Collect(aoi.geom), 0.5) AS ext
         FROM aoi, pts
@@ -110,7 +131,9 @@ get_contour <- function(
         FROM inputs
       )
       -- Feed it all into interpolation
-      SELECT 1 AS rid,
+      -- SELECT 1 AS rid,
+      SELECT 
+        '{hash}' AS args_hash,
         ST_Clip(
           ST_SetBandNoDataValue(
             ST_InterpolateRaster(
@@ -132,7 +155,10 @@ get_contour <- function(
   
   # pgListRast(con)
   if (return_raster){
-    r <- pgGetRast(con, name = rast_idw)
+    # r <- pgGetRast(con, name = rast_idw)
+    r <- pgGetRast(
+      con, name = "z_idw", clauses = glue("WHERE args_hash = '{hash}'"))
+    
     return(r)
   }
   # mapview::mapView(r)
@@ -168,7 +194,7 @@ get_contour <- function(
   z <- dbGetQuery(con, glue("
     SELECT (pvq).*
       FROM (SELECT ST_Quantile(rast, ARRAY[{paste(q, collapse=',')}]) As pvq
-            FROM {rast_idw} WHERE rid=1) As foo
+            FROM z_idw WHERE args_hash='{hash}') As foo
     ORDER BY (pvq).quantile"))
   # round(z$value, 2)
   # z  
@@ -196,7 +222,7 @@ get_contour <- function(
           ST_Contour(
             rast, 1, 
             fixed_levels => ARRAY[{paste(z$value, collapse=',')}] )).*
-          FROM {rast_idw} WHERE rid = 1),
+          FROM z_idw WHERE args_hash='{hash}'),
       closed_lns AS (
         SELECT 
           ST_Union(geom) AS geom 
@@ -225,7 +251,7 @@ get_contour <- function(
         ST_Intersection(plys.geom, aoi.geom) AS geom
         FROM plys INNER JOIN aoi ON ST_Intersects(plys.geom, aoi.geom)") )
   
-  # p <- p |> 
+  # p <- p |>
   #   mutate(
   #     val_avg = purrr::map2_dbl(val_min, val_max, mean))
   # mapview::mapView(r) +
