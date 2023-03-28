@@ -2,7 +2,7 @@
 # https://www.crunchydata.com/blog/waiting-for-postgis-3.2-st_interpolateraster
 
 librarian::shelf(
-  digest, jsonlite, rpostgis, sf)
+  digest, dplyr, jsonlite, rpostgis, sf, terra)
 
 get_contour <- function(
     variable, value, 
@@ -10,8 +10,13 @@ get_contour <- function(
     aoi_shore   = c("nearshore", "offshore"),
     date_beg, date_end, date_qrtr=1, 
     depth_m_min, depth_m_max,
-    n_bins = 7, return_raster = FALSE){
+    n_bins = 7, 
+    return_type = c('polygons', 'raster', 'points'),
+    idw_algorithm = "invdist:power:2.0:smoothing:2.0",
+    rast_redo = F){
   
+  return_type = return_type[1]
+    
   # variable    = "ctd_bottles.t_degc" # input$sel_var
   # value       = "avg"                # input$sel_val
   # aoi_pattern = c("standard", "extended")
@@ -25,119 +30,143 @@ get_contour <- function(
   # return_raster = FALSE
   
   args_in <- list(
-    variable    = variable,
-    value       = value,
-    aoi_pattern = aoi_pattern,
-    aoi_shore   = aoi_shore,
-    date_beg    = date_beg, 
-    date_end    = date_end,
-    date_qrtr   = date_qrtr,
-    depth_m_min = depth_m_min, 
-    depth_m_max = depth_m_max,
-    n_bins      = n_bins)
+    variable      = variable,
+    value         = value,
+    aoi_pattern   = aoi_pattern,
+    aoi_shore     = aoi_shore,
+    date_beg      = date_beg, 
+    date_end      = date_end,
+    date_qrtr     = date_qrtr,
+    depth_m_min   = depth_m_min, 
+    depth_m_max   = depth_m_max,
+    n_bins        = n_bins,
+    idw_algorithm = idw_algorithm)
   args_json <- jsonlite::toJSON(args_in)
   hash <- digest(args_in, algo="crc32")
-  
-  # test values
-  # d <- dbGetQuery(con, glue("
-  #   SELECT
-  #     ST_X(geom) AS x,
-  #     ST_Y(geom) AS y,
-  #     AVG(t_degc) AS z
-  #     FROM ctd_casts
-  #       JOIN ctd_bottles USING (cast_count)
-  #     WHERE
-  #       (depthm BETWEEN {depth_m_min} AND {depth_m_max}) AND
-  #       (date BETWEEN '{date_beg}' AND '{date_end}')
-  #     GROUP BY geom"))
-  # hist(d$z)
-  # range(d$z, na.rm=T) # 1.658276 30.353333
+  message(glue("hash: {hash}"))
   
   # TODO: variable, value; use MATERIALIZED VIEW to combine all vars into single table in advance
+  aoi_sql <- glue("
+    aoi AS (
+      SELECT ST_Union(geom) AS geom
+      FROM effort_zones 
+      WHERE
+      sta_pattern IN ('{paste(aoi_pattern, collapse = '\\',\\'')}') AND
+      sta_shore   IN ('{paste(aoi_shore  , collapse = '\\',\\'')}') )")
+  aoi_pts_sql <- glue("
+    {aoi_sql},
+    pts AS (
+      SELECT 
+      ST_SetSRID(
+        ST_MakePoint(
+          ST_X(c.geom),
+          ST_Y(c.geom),
+          AVG(t_degc) ),
+        4326) AS geom
+      FROM ctd_casts AS c 
+      JOIN ctd_bottles AS cb USING (cast_count)
+      JOIN aoi ON ST_Covers(aoi.geom, c.geom)
+      WHERE 
+      (depthm BETWEEN {depth_m_min} AND {depth_m_max}) AND
+      (date BETWEEN '{date_beg}' AND '{date_end}') AND
+      -- DATE_PART('year'   , date) = 2020  AND
+      DATE_PART('quarter', date) IN ({paste(date_qrtr, collapse=',')})
+      GROUP BY c.geom )")
+  
+  if (return_type == "points"){
+    sql <- glue("
+      WITH
+        {aoi_pts_sql}
+      SELECT * FROM pts
+      ")
+    pts <- st_read(con, query = sql) |> 
+      mutate(
+        z = st_coordinates(geom)[,"Z"]) |> 
+      st_zm()
+    return(pts)
+  }
+  
+  inputs_sql <- glue("
+    inputs AS (
+      SELECT
+      0.1::float8 AS pixelsize,
+      -- https://gdal.org/programs/gdal_grid.html#interpolation-algorithms
+      -- 'invdist:power:5.5:smoothing:2.0' AS algorithm,
+      '{idw_algorithm}' AS algorithm, -- default parameters
+      ST_Collect(pts.geom) AS geom,
+      ST_Expand(ST_Collect(aoi.geom), 0.5) AS ext
+      FROM aoi, pts)")
+  if (return_type == "inputs"){
+    sql <- glue("
+      WITH
+        {aoi_pts_sql},
+        {inputs_sql}
+      SELECT * FROM inputs
+      ")
+    inputs <- st_read(con, query = sql)
+    return(inputs)
+  }
+  
+  sizes_sql <- glue("
+    -- Calculate output raster geometry
+    -- Use the expanded extent to take in areas beyond the limit of the
+    -- temperature stations
+    sizes AS (
+      SELECT
+      ceil((ST_XMax(ext) - ST_XMin(ext))/pixelsize)::integer AS width,
+      ceil((ST_YMax(ext) - ST_YMin(ext))/pixelsize)::integer AS height,
+      ST_XMin(ext) AS upperleftx,
+      ST_YMax(ext) AS upperlefty
+      FROM inputs)")
+  if (return_type == "sizes"){
+    sql <- glue("
+      WITH
+        {aoi_pts_sql},
+        {inputs_sql},
+        {sizes_sql}
+      SELECT * FROM sizes
+      ")
+    sizes <- dbGetQuery(con, sql)
+    return(sizes)
+  }
   
   # do once
-  q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
-  q <- dbSendStatement(
-    con,
-    "CREATE TABLE z_idw (
-      rid SERIAL PRIMARY KEY,
-      args_hash TEXT,
-      args_json JSON,
-      rast RASTER)")
-  dbClearResult(q)
+  # q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
+  # q <- dbSendStatement(
+  #   con,
+  #   "CREATE TABLE z_idw (
+  #     rid SERIAL PRIMARY KEY,
+  #     args_hash TEXT,
+  #     args_json JSON,
+  #     rast RASTER)")
+  # dbClearResult(q)
   # q <- dbSendStatement(con,  "SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'")
   # dbClearResult(q)
-  
-  # OLD
-  # rast_idw <- glue("z_idw_{hash}")
-  # rast_idw_exists <- dbGetQuery(con, glue(
-  #   "SELECT EXISTS (
-  #     SELECT FROM pg_tables
-  #     WHERE 
-  #       schemaname = 'public' AND 
-  #       tablename  = '{rast_idw}')"))$exists
+
   rast_idw_exists <- tbl(con, "z_idw") |> 
     filter(args_hash == hash) |> 
     collect() |> 
     nrow() > 0
   
-  if (!rast_idw_exists){
-    sql <- glue("
+  if (rast_idw_exists & rast_redo){
+    q <- dbSendStatement(con, glue("DELETE FROM z_idw WHERE args_hash = '{hash}'"))
+    dbClearResult(q)
+    rast_idw_exists <- F
+  }
+  
+  sql <- glue("
       INSERT INTO z_idw (
         args_hash, 
         args_json,
         rast)
       WITH 
-      aoi AS (
-        SELECT ST_Union(geom) AS geom
-          FROM effort_zones 
-          WHERE
-            sta_pattern IN ('{paste(aoi_pattern, collapse = '\\',\\'')}') AND
-            sta_shore   IN ('{paste(aoi_shore  , collapse = '\\',\\'')}') ),
-      pts AS (
-        SELECT 
-          ST_SetSRID(
-            ST_MakePoint(
-              ST_X(c.geom),
-              ST_Y(c.geom),
-              AVG(t_degc) ),
-            4326) AS geom
-        FROM ctd_casts AS c 
-          JOIN ctd_bottles AS cb USING (cast_count)
-          JOIN aoi ON ST_Covers(aoi.geom, c.geom)
-        WHERE 
-          (depthm BETWEEN {depth_m_min} AND {depth_m_max}) AND
-          (date BETWEEN '{date_beg}' AND '{date_end}') AND
-          -- DATE_PART('year'   , date) = 2020  AND
-          DATE_PART('quarter', date) IN ({paste(date_qrtr, collapse=',')})
-        GROUP BY c.geom ),
-      inputs AS (
-        SELECT
-          0.1::float8 AS pixelsize,
-          -- https://gdal.org/programs/gdal_grid.html#interpolation-algorithms
-          -- 'invdist:power:5.5:smoothing:2.0' AS algorithm,
-          'invdist:power:2.0:smoothing:2.0' AS algorithm, -- default parameters
-          ST_Collect(pts.geom) AS geom,
-          ST_Expand(ST_Collect(aoi.geom), 0.5) AS ext
-        FROM aoi, pts
-      ),
-      -- Calculate output raster geometry
-      -- Use the expanded extent to take in areas beyond the limit of the
-      -- temperature stations
-      sizes AS (
-        SELECT
-          ceil((ST_XMax(ext) - ST_XMin(ext))/pixelsize)::integer AS width,
-          ceil((ST_YMax(ext) - ST_YMin(ext))/pixelsize)::integer AS height,
-          ST_XMin(ext) AS upperleftx,
-          ST_YMax(ext) AS upperlefty
-        FROM inputs
-      )
-      -- Feed it all into interpolation
-      -- SELECT 1 AS rid,
+      {aoi_pts_sql},
+      {inputs_sql},
+      {sizes_sql}
       SELECT 
         '{hash}' AS args_hash,
         '{args_json}' AS args_json,
-        ST_Clip(
+        -- ST_Clip(
           ST_SetBandNoDataValue(
             ST_InterpolateRaster(
               geom,
@@ -148,19 +177,26 @@ get_contour <- function(
                     width, height, upperleftx, upperlefty, pixelsize), 
                   '32BF'), 
                 ST_SRID(geom))),
-            -9999),
-          (SELECT geom FROM aoi)) AS rast
+            -9999)
+          -- (SELECT geom FROM aoi)) 
+        AS rast
       FROM sizes, inputs;")
+  if (return_type == "sql"){
+    return(sql)
+  }
+  
+  if (!rast_idw_exists){
     # cat(sql)
     q <- dbSendStatement(con,  sql)
     dbClearResult(q)
   }
   
   # pgListRast(con)
-  if (return_raster){
+  if (return_type == 'raster'){
     # r <- pgGetRast(con, name = rast_idw)
     r <- pgGetRast(
-      con, name = "z_idw", clauses = glue("WHERE args_hash = '{hash}'"))
+      con, name = "z_idw", clauses = glue("WHERE args_hash = '{hash}'")) |> 
+      rast()
     
     return(r)
   }
@@ -193,22 +229,107 @@ get_contour <- function(
   # seq(stats$min, stats$max, length.out = n_bins)
   # bins <- pretty(c(stats$min, stats$max), n_bins)
   
-  q <- seq(0, 1, length.out = n_bins)
-  z <- dbGetQuery(con, glue("
+  q <- seq(0, 1, length.out = n_bins+1)
+  sql <- glue("
+    -- SELECT (pvq).*
+    --   FROM (SELECT ST_Quantile(rast, ARRAY[{paste(q, collapse=',')}]) As pvq
+    --         FROM z_idw WHERE args_hash='{hash}') As foo
+    WITH
+      {aoi_sql},
+      r AS (
+        SELECT rast FROM z_idw WHERE args_hash='{hash}'),
+      rc AS (
+        SELECT ST_Clip(rast, (SELECT geom FROM aoi)) AS rast from r)
     SELECT (pvq).*
       FROM (SELECT ST_Quantile(rast, ARRAY[{paste(q, collapse=',')}]) As pvq
-            FROM z_idw WHERE args_hash='{hash}') As foo
-    ORDER BY (pvq).quantile"))
-  # round(z$value, 2)
-  # z  
-  # quantile     value
-  # 1 0.0000000  4.142121
-  # 2 0.1666667 10.743656
-  # 3 0.3333333 11.099418
-  # 4 0.5000000 11.250334
-  # 5 0.6666667 11.398816
-  # 6 0.8333333 11.651850
-  # 7 1.0000000 27.722250
+            FROM rc) As foo
+    ORDER BY (pvq).quantile")
+  message(sql)
+  z <- dbGetQuery(con, sql)
+  message(glue("q: {paste(q, collapse=', ')}"))
+  message(glue("z: {paste(z$value, collapse=', ')}"))
+  
+  # z
+  #    quantile     value
+  # 1 0.0000000  9.555898
+  # 2 0.1428571  9.938250
+  # 3 0.2857143 10.244237
+  # 4 0.4285714 10.560025
+  # 5 0.5714286 10.904219
+  # 6 0.7142857 11.261299
+  # 7 0.8571429 11.816612
+  # 8 1.0000000 15.640248
+  #
+  # global(r, "range", na.rm=T)
+  # range      max
+  # layer 9.555898 15.64025
+  
+  if (return_type == "aoi"){
+    aoi <- st_read(
+      con,
+      query = glue("
+        SELECT ST_Union(geom) AS geom
+          FROM effort_zones 
+          WHERE
+            sta_pattern IN ('{paste(aoi_pattern, collapse = '\\',\\'')}') AND
+            sta_shore   IN ('{paste(aoi_shore  , collapse = '\\',\\'')}')"))
+    return(aoi)
+  }
+  
+  if (return_type == "lines"){
+    lns <- st_read(
+      con,
+      query = glue("
+        WITH
+          aoi AS (
+            SELECT ST_Union(geom) AS geom
+              FROM effort_zones 
+              WHERE
+                sta_pattern IN ('{paste(aoi_pattern, collapse = '\\',\\'')}') AND
+                sta_shore   IN ('{paste(aoi_shore  , collapse = '\\',\\'')}') ),
+          lns AS (
+            SELECT (
+              ST_Contour(
+                rast, 1, 
+                fixed_levels => ARRAY[{paste(z$value, collapse=',')}] )).*
+              FROM z_idw WHERE args_hash='{hash}')
+          SELECT * FROM lns"))
+    message(glue("l: {paste(sort(unique(l$value)), collapse=', ')}"))
+    return(lns)
+  }
+  
+  if (return_type == "closed_lines"){
+    q <- glue("
+        WITH
+          aoi AS (
+            SELECT ST_Union(geom) AS geom
+              FROM effort_zones 
+              WHERE
+                sta_pattern IN ('{paste(aoi_pattern, collapse = '\\',\\'')}') AND
+                sta_shore   IN ('{paste(aoi_shore  , collapse = '\\',\\'')}') ),
+          lns AS (
+            SELECT (
+              ST_Contour(
+                rast, 1, 
+                fixed_levels => ARRAY[{paste(z$value, collapse=',')}] )).*
+              FROM z_idw WHERE args_hash='{hash}'),
+          closed_lns AS (
+            SELECT 
+              ST_Union(geom) AS geom 
+            FROM 
+              (SELECT geom FROM lns 
+               UNION ALL 
+               -- SELECT ST_SetSRID(ST_Boundary(ST_Expand(ST_Extent(geom), -1e-10)), 4326) 
+               -- FROM lns) sq)
+               SELECT ST_SetSRID(ST_Boundary(ST_Extent(geom)), 4326) 
+               FROM aoi) sq)
+          SELECT * FROM closed_lns")
+    message(q)
+    cl_lns <- st_read(
+      con,
+      query = q)
+    return(cl_lns)
+  }
   
   p <- st_read(
     con,
@@ -232,15 +353,17 @@ get_contour <- function(
         FROM 
           (SELECT geom FROM lns 
            UNION ALL 
-           SELECT ST_SetSRID(ST_Boundary(ST_Expand(ST_Extent(geom), -1e-10)), 4326) 
-           FROM lns) sq),
+           -- SELECT ST_SetSRID(ST_Boundary(ST_Expand(ST_Extent(geom), -1e-10)), 4326) 
+           -- FROM lns) sq)
+           SELECT ST_SetSRID(ST_Boundary(ST_Extent(geom)), 4326) 
+           FROM aoi) sq),
       plys AS (
         SELECT
           poly_id, 
           min(polys.geom)::geometry AS geom, 
-          MIN(value)  AS val_min, 
-          AVG(value)  AS val_avg,
-          MAX(value)  AS val_max
+          MIN(value)  AS k_min, 
+          AVG(value)  AS k_avg,
+          MAX(value)  AS k_max
         FROM
           (SELECT row_number() OVER () AS poly_id, geom FROM
               (SELECT 
@@ -248,33 +371,80 @@ get_contour <- function(
                FROM closed_lns) dump
           ) polys
         INNER JOIN lns ON ST_Intersects(polys.geom, lns.geom)
-        GROUP BY poly_id)
-      SELECT 
-        poly_id, val_min, val_avg, val_max,
-        ST_Intersection(plys.geom, aoi.geom) AS geom
-        FROM plys INNER JOIN aoi ON ST_Intersects(plys.geom, aoi.geom)") )
+        GROUP BY poly_id),
+      plys_clip0 AS (
+        SELECT 
+          poly_id, k_min, k_avg, k_max,
+            ST_Intersection(plys.geom, aoi.geom) AS geom
+          FROM plys 
+          INNER JOIN aoi ON ST_Intersects(plys.geom, aoi.geom)),
+      plys_clip AS (
+        SELECT * 
+        FROM plys_clip0
+        WHERE ST_GeometryType(geom) IN ('ST_Polygon','ST_MultiPolygon')),
+      plys_ctr AS (
+        SELECT 
+          *, 
+          ST_PointOnSurface(geom) AS geom_ctr -- centroid always interior to polygon
+        FROM plys_clip)
+      SELECT
+        k_min, k_avg, k_max,
+        ST_Value(rast, 1, p.geom_ctr) AS val_ctr,
+        geom
+      FROM plys_ctr p, z_idw z
+      WHERE 
+        z.args_hash = '{hash}' AND
+        ST_Intersects(z.rast, p.geom_ctr)
+      -- OLD: slow and val_avg = NA for many polygons...
+      --  plys_rast AS (
+      --    SELECT  poly_id, (stats).*
+      --    FROM (
+      --      SELECT poly_id, ST_SummaryStats(ST_Clip(rast, 1, geom, TRUE)) As stats
+      --      FROM z_idw z
+      --      INNER JOIN plys_clip p ON ST_Intersects(p.geom, z.rast) 
+      --      WHERE z.args_hash='{hash}') As foo ),
+      --  plys_stats AS (
+      --    SELECT 
+      --      poly_id, 
+      --      SUM(count) AS n_pixels, 
+      --      MIN(min) AS val_min,
+      --      MAX(max) AS val_max,
+      --      SUM(mean*count)/SUM(count) AS val_avg
+      --    FROM plys_rast
+      --    WHERE count > 0
+      --    GROUP BY poly_id
+      --    ORDER BY poly_id)
+      --  SELECT pc.*, ps.* 
+      --  FROM
+      --  plys_clip pc
+      --  LEFT JOIN 
+      --    plys_stats ps USING (poly_id)
+      ") )
   
   # p <- p |>
   #   mutate(
   #     val_avg = purrr::map2_dbl(val_min, val_max, mean))
   # mapview::mapView(r) +
   #   mapview::mapView(p, zcol = "val_avg")
+  attr(p, "breaks") <- z
   p
 }
 
-map_base <- function(){
+map_base <- function(base_opacity=0.5){
   leaflet() |> 
     # add base: blue bathymetry and light brown/green topography
     addProviderTiles(
       "Esri.OceanBasemap",
       options = providerTileOptions(
-        variant = "Ocean/World_Ocean_Base"),
+        variant = "Ocean/World_Ocean_Base",
+        opacity = base_opacity),
       group = "OceanBase") |>
     # add reference: placename labels and borders
     addProviderTiles(
       "Esri.OceanBasemap",
       options = providerTileOptions(
-        variant = "Ocean/World_Ocean_Reference"),
+        variant = "Ocean/World_Ocean_Reference",
+        opacity = base_opacity),
       group = "OceanLabels")
 }
 
@@ -299,6 +469,79 @@ add_contours <- function(m, p, title){
       options = layersControlOptions(collapsed = T))
   
 }
+
+# DEBUG functions for scripts:explore_pg_contour2.qmd ----
+interp_rast <- function(algorithm){
+  r <- do.call(
+    get_contour,
+    c(contour_args, list(
+      return_type   = "raster",
+      idw_algorithm = algorithm)))
+  map_rp(r, p)
+}
+
+map_rp <- function(r,p){
+  rng_r <- global(r, "range", na.rm=T) |> as.numeric()
+  rng_p <- range(p$z)
+  rng <- range(c(rng_r, rng_p))
+  
+  pal <- colorNumeric("Spectral", rng, na.color = NA)
+  
+  map_base(base_opacity = 0.2) |> 
+    addRasterImage(
+      r, colors = pal, opacity=0.7, group = "raster") |>
+    addLegend(
+      pal = pal, values = rng) |> 
+    addCircleMarkers(
+      data   = p,
+      radius = 5, fillOpacity = 0.2,
+      stroke = T, weight = 1, opacity = 0.8,
+      color  = ~pal(z), group = "points") |> 
+    addLayersControl(
+      # baseGroups    = c("OceanBase", "OceanLabels"),
+      overlayGroups = c("raster", "points"),
+      options       = layersControlOptions(collapsed = T),
+      position      = "topleft") |> 
+    hideGroup("points")
+}
+
+map_rpk <- function(r, p, k){
+  rng_r <- global(r, "range", na.rm=T) |> as.numeric()
+  rng_p <- range(p$z)
+  rng_k <- range(c(k$val_min, k$val_max))
+  rng <- range(c(rng_r, rng_p, rng_k))
+  
+  pal <- colorNumeric("Spectral", rng, na.color = NA)
+  
+  qbins <- sort(unique(c(k$val_min, k$val_max)))
+  message(glue("k$val_avg: {paste(sort(unique(c(k$val_min, k$val_max))), collapse=', ')}"))
+  message(glue("    qbins: {paste(qbins, collapse=', ')}", .trim = F))
+  qpal <- colorBin("Spectral", bins = qbins, reverse = T)
+  
+  map_base(base_opacity = 0.2) |> 
+    addRasterImage(
+      r, colors = pal, opacity=0.7, group = "raster") |>
+    addLegend(
+      pal = pal, values = rng, title="raster") |> 
+    addCircleMarkers(
+      data   = p,
+      radius = 5, fillOpacity = 0.2,
+      stroke = T, weight = 1, opacity = 0.8,
+      color  = ~pal(z), group = "points") |> 
+    addPolygons(
+      data = p, fillOpacity = 0.5, weight = 2, opacity = 0.7,
+      color = ~qpal(val_avg), group = "contours") |> 
+    addLegend(
+      pal = qpal, values = p$val_avg, opacity = 1, 
+      title = "contours", group = "contours") |> 
+    addLayersControl(
+      # baseGroups    = c("OceanBase", "OceanLabels"),
+      overlayGroups = c("raster", "points","contours"),
+      options       = layersControlOptions(collapsed = T),
+      position      = "topleft") |> 
+    hideGroup(c("points","raster"))
+}
+
 
 # p <- get_contour(
 #   variable = "ctd_bottles.t_degc",
