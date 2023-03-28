@@ -56,15 +56,15 @@ get_contour <- function(
   # TODO: variable, value; use MATERIALIZED VIEW to combine all vars into single table in advance
   
   # do once
-  q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
-  q <- dbSendStatement(
-    con,
-    "CREATE TABLE z_idw (
-      rid SERIAL PRIMARY KEY,
-      args_hash TEXT,
-      args_json JSON,
-      rast RASTER)")
-  dbClearResult(q)
+  # q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
+  # q <- dbSendStatement(
+  #   con,
+  #   "CREATE TABLE z_idw (
+  #     rid SERIAL PRIMARY KEY,
+  #     args_hash TEXT,
+  #     args_json JSON,
+  #     rast RASTER)")
+  # dbClearResult(q)
   # q <- dbSendStatement(con,  "SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'")
   # dbClearResult(q)
   
