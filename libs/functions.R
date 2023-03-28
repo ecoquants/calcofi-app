@@ -2,7 +2,7 @@
 # https://www.crunchydata.com/blog/waiting-for-postgis-3.2-st_interpolateraster
 
 librarian::shelf(
-  digest, rpostgis, sf)
+  digest, jsonlite, rpostgis, sf)
 
 get_contour <- function(
     variable, value, 
@@ -35,6 +35,7 @@ get_contour <- function(
     depth_m_min = depth_m_min, 
     depth_m_max = depth_m_max,
     n_bins      = n_bins)
+  args_json <- jsonlite::toJSON(args_in)
   hash <- digest(args_in, algo="crc32")
   
   # test values
@@ -55,14 +56,15 @@ get_contour <- function(
   # TODO: variable, value; use MATERIALIZED VIEW to combine all vars into single table in advance
   
   # do once
-  # q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
-  # q <- dbSendStatement(
-  #   con,
-  #   "CREATE TABLE z_idw (
-  #     rid SERIAL PRIMARY KEY,
-  #     args_hash TEXT,
-  #     rast RASTER)")
-  # dbClearResult(q)
+  q <- dbSendStatement(con, "DROP TABLE z_idw"); dbClearResult(q)
+  q <- dbSendStatement(
+    con,
+    "CREATE TABLE z_idw (
+      rid SERIAL PRIMARY KEY,
+      args_hash TEXT,
+      args_json JSON,
+      rast RASTER)")
+  dbClearResult(q)
   # q <- dbSendStatement(con,  "SET postgis.gdal_enabled_drivers = 'ENABLE_ALL'")
   # dbClearResult(q)
   
@@ -80,10 +82,10 @@ get_contour <- function(
     nrow() > 0
   
   if (!rast_idw_exists){
-    # dbSendQuery(con,  glue("DROP TABLE IF EXISTS {rast_idw}"))
     sql <- glue("
       INSERT INTO z_idw (
         args_hash, 
+        args_json,
         rast)
       WITH 
       aoi AS (
@@ -134,6 +136,7 @@ get_contour <- function(
       -- SELECT 1 AS rid,
       SELECT 
         '{hash}' AS args_hash,
+        '{args_json}' AS args_json,
         ST_Clip(
           ST_SetBandNoDataValue(
             ST_InterpolateRaster(
