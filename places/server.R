@@ -2,8 +2,10 @@ shinyServer(function(input, output, session) {
   
   rxvals <- reactiveValues(
     map_init = F,
-    aoi_keys = aoi_keys,
+    aoi_cat  = aoi_cat_init, 
+    aoi_keys = aoi_keys_init,
     aoi_ewkt = NULL,
+    aoi_rows = aoi_rows_init,
     mapedit_counter = 1)
   
   # map ----
@@ -12,7 +14,7 @@ shinyServer(function(input, output, session) {
     plys <- isolate(get_map_data(
       variable      = input$sel_var,
       value         = input$sel_val,
-      aoi_keys      = rxvals$aoi_keys, # TODO: change to optional aoi_wkt, aoi_keys (sorted for hash); default cc_* (all but historical)
+      aoi_keys      = rxvals$aoi_keys,
       aoi_ewkt      = rxvals$aoi_ewkt, 
       depth_m_min   = input$sel_depth_range[1],
       depth_m_max   = input$sel_depth_range[2],
@@ -28,28 +30,24 @@ shinyServer(function(input, output, session) {
     
     rxvals$map_init <- T
     
-    map_base(
-      options = leafletOptions(
-        attributionControl = F)) |>
+    map_base() |>
       add_contours(plys, title)
   })
   
   # map_side ----
   output$map_side <- renderLeaflet({
-    map_base(
-      options = leafletOptions(
-        zoomControl        = F,
-        attributionControl = F)) |> 
+    map_base(zoomControl = F) |> 
       setView(-122.4, 33.8, 4)
   })
   
   # observeEvent btn_update ----
   observeEvent(input$btn_update, {
+    # message(glue("observeEvent btn_update beg ~ {Sys.time()}"))
 
     plys <- get_map_data(
       variable      = input$sel_var,
       value         = input$sel_val,
-      aoi_keys      = rxvals$aoi_keys, # TODO: change to optional aoi_wkt, aoi_keys (sorted for hash); default cc_* (all but historical)
+      aoi_keys      = rxvals$aoi_keys,
       aoi_ewkt      = rxvals$aoi_ewkt, 
       depth_m_min   = input$sel_depth_range[1],
       depth_m_max   = input$sel_depth_range[2],
@@ -58,20 +56,30 @@ shinyServer(function(input, output, session) {
       date_end      = input$sel_date_range[2],
       return_type   = "polygons")
     
-    title = d_vars |> 
-      filter(table_field == input$sel_var) |> 
-      pull(plot_label) |> 
-      paste(glue("<br>{input$sel_val}"))
+    if (is.null(plys)){
+      showNotification(
+        "Sorry, no observations were found. Please try expanding your query in time and/or space.",
+        duration = NULL, closeButton = T, type = "error")
+    } else {
+      title = d_vars |> 
+        filter(table_field == input$sel_var) |> 
+        pull(plot_label) |> 
+        paste(glue("<br>{input$sel_val}"))
+      
+      leafletProxy("map") |>
+        add_contours(plys, title)
+    }
     
-    leafletProxy("map") |>
-      add_contours(plys, title)
+    # message(glue("observeEvent btn_update end ~ {Sys.time()}"))
   })
   
   # observe aoi ----
   observe({
     req(rxvals$map_init)
     
-    message(glue("observe aoi ~ {Sys.time()}"))
+    # message(glue("observe aoi - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    # message(glue("observe aoi ~ {Sys.time()}"))
+    #browser()
     
     aoi <- get_aoi(
       aoi_keys = rxvals$aoi_keys,
@@ -101,24 +109,135 @@ shinyServer(function(input, output, session) {
         data = aoi, group = "aoi_edit")
   })
   
-  # observeEvent btn_aoi ----
+  get_tbl_places <- reactive({
+    cc_places |> 
+      st_drop_geometry() |> 
+      filter(category == input$sel_place_category)
+  })
+  
+  # tbl_places ----
+  output$tbl_places <- renderDataTable({
+    get_tbl_places() |> 
+      select(name)
+  },
+  options = list(pageLength = 6),
+  server = FALSE,
+  selection = list(mode = 'multiple', selected = rxvals$aoi_rows) )
+  
+  # observeEvent tbl_places_rows_selected ----
+  observeEvent(input$tbl_places_rows_selected,{
+    # message("observeEvent(input$tbl_places_rows_selected")
+    # message(glue("observeEvent tbl_places_rows_selected, beg - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    
+    # browser()
+    rxvals$aoi_keys <- get_tbl_places() |> 
+      slice(input$tbl_places_rows_selected) |> 
+      pull(key)
+    
+    rxvals$aoi_rows <- input$tbl_places_rows_selected
+    
+    # message(glue("observeEvent tbl_places_rows_selected, end - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    # message(glue("observeEvent tbl_places_rows_selected, end - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+  })
+  
+  # map_places ----
+  output$map_places <- renderLeaflet({
+    req(input$sel_place_category)
+
+    # rxvals <- list(aoi_keys =  c(
+    #   "cc_nearshore-extended",
+    #   "cc_offshore-extended",
+    #   "cc_nearshore-standard",
+    #   "cc_offshore-standard"))
+    
+    #browser()
+    # message(glue("map_places, beg - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    
+    plys <- cc_places |> 
+      filter(
+        category == input$sel_place_category)
+    plys_aoi <- cc_places |> 
+      filter(
+        key %in% rxvals$aoi_keys)
+    
+    map_base() |> 
+      addPolygons(
+        data = plys, layerId = ~key) |> 
+      addPolygons(
+        data = plys_aoi, layerId = ~key,
+        group = "plys_aoi", color = "yellow")
+  })
+  
+  # observeEvent map_places_shape_click ----
+  observeEvent(input$map_places_shape_click,{
+    # message("observeEvent(input$map_places_shape_click")
+    # message(glue("observeEvent map_places_shape_click, beg - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    
+    key_click <- input$map_places_shape_click$id
+    if (key_click %in% rxvals$aoi_keys){
+      rxvals$aoi_keys <- setdiff(rxvals$aoi_keys, key_click)
+    } else {
+      rxvals$aoi_keys <- c(rxvals$aoi_keys, key_click)
+    }
+    
+    rxvals$aoi_rows <- which(get_tbl_places()$key %in% rxvals$aoi_keys)
+    
+    # message(glue("observeEvent map_places_shape_click, end - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    # message(glue("observeEvent map_places_shape_click, end - rxvals$aoi_rows: {paste(rxvals$aoi_rows, collapse =',')}"))
+  })
+  
+  # observeEvent sel_place_category ----
+  observeEvent(input$sel_place_category,{
+    # message("observeEvent(input$sel_place_category")
+    # message(glue("observeEvent sel_place_category, beg - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
+    
+    leafletProxy("map_places") |> 
+      clearGroup("plys_aoi")
+    dataTableProxy("tbl_places") |> 
+      selectRows(NULL)
+    
+    # browser()
+    if (input$sel_place_category == rxvals$aoi_cat){
+      rxvals$aoi_rows <- which(get_tbl_places()$key %in% rxvals$aoi_keys)
+    } else {
+      rxvals$aoi_rows = NULL
+    }
+  })
+  
+  # observeEvent btn_aoi -> modal ----
   observeEvent(input$btn_aoi, {
     
     # kick mapedit to regenerate
     rxvals$mapedit_counter = rxvals$mapedit_counter + 1
+    
+    # message(glue("observeEvent btn_aoi, beg - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
     
     showModal(modalDialog(
       title = "Modify Area",
       tabsetPanel(
         tabPanel(
           "Existing",
-          "TBD"),
+            "Select an existing Area of interest.",
+            selectInput(
+              "sel_place_category",
+              "Category",
+              cc_places$category |> unique() |> sort(),
+              rxvals$aoi_cat),
+          fluidRow(
+            column(
+              6,
+              leafletOutput("map_places") ),
+            column(
+              6,
+              dataTableOutput("tbl_places") ) ) ),
         tabPanel(
           "Custom",
+          "Draw your own Area of interest using the tools on left of the map.",
           leafletOutput("mapedit"))
       ),
       footer    = modalButton("Close"),
-      easyClose = T))
+      easyClose = T,
+      size      = "l"))
     
   })
   
@@ -126,18 +245,14 @@ shinyServer(function(input, output, session) {
   output$mapedit <- renderLeaflet({
     library(leaflet.extras)
     
-    message(glue("mapedit {rxvals$mapedit_counter} renderLeaflet() ~ {Sys.time()}"))
+    # message(glue("mapedit {rxvals$mapedit_counter} renderLeaflet() ~ {Sys.time()}"))
     
     aoi <- get_aoi(
       aoi_keys = rxvals$aoi_keys,
       aoi_ewkt = rxvals$aoi_ewkt)
   
-    m <- map_base(
-      options = leafletOptions(
-        zoomControl        = T,
-        attributionControl = F)) |>
+    m <- map_base() |>
       addPolygons(data = aoi, group = "aoi_edit") |> 
-      #setView(-122.4, 33.8, 5) |> 
       addDrawToolbar(
         targetGroup = "aoi_edit",
         editOptions = editToolbarOptions(
@@ -148,18 +263,7 @@ shinyServer(function(input, output, session) {
         markerOptions       = F,
         polylineOptions     = F,
         singleFeature       = T)
-    
-    # if (!is.null(rxvals$aoi_ewkt)){
-    #   
-    #   ply <- rxvals$aoi_ewkt |> st_as_sfc() |> st_as_sf() |> st_set_geometry("geom")
-    # 
-    #   bb <- sf::st_bbox(ply)
-    #   
-    #   m <- m %>% 
-    #     addPolygons(data = aoi, group = "aoi_edit") #|> 
-    #     # flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
-    # }
-    
+  
     m
   })
   
@@ -170,7 +274,8 @@ shinyServer(function(input, output, session) {
     
     req(input$mapedit_draw_all_features)
     
-    message(glue("observe mapedit_draw ~ {Sys.time()}"))
+    # message(glue("observe mapedit_draw ~ {Sys.time()}"))
+    # message(glue("observe mapedit_draw - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
     
     # get drawn feature
     feature <- input$mapedit_draw_all_features$features[[1]]
@@ -188,55 +293,17 @@ shinyServer(function(input, output, session) {
       st_geometry(aoi) |> 
       st_as_text(EWKT=T)
     rxvals$aoi_keys <- NULL
+    rxvals$aoi_rows <- NULL
     
-    # leafletProxy("mapedit") |> 
-    #   clearShapes()
-    # 
-    # ply <- isolate(rxvals$aoi_ewkt) |> 
-    #   st_as_sfc() |> st_as_sf() |> st_set_geometry("geom")
-    #   
-    # bb <- sf::st_bbox(ply)
-    #   
-    # leafletProxy("mapedit") |> 
-    #   addPolygons(data = ply, group = "aoi_edit") |> 
-    #   flyToBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+    # message(glue("observe mapedit_draw, almost end - input$tbl_places_rows_selected: {paste(input$tbl_places_rows_selected, collapse = ',')}"))
+    # browser()
+    dataTableProxy("tbl_places") |>
+      selectRows(c())
+    leafletProxy("map_places") |>
+      clearGroup("plys_aoi")
+    
+    # message(glue("observe mapedit_draw, end - input$tbl_places_rows_selected: {paste(input$tbl_places_rows_selected, collapse = ',')}"))
+    
   })
   
-  # Start of Drawing
-  observeEvent(input$mapedit_draw_start, {
-    print("Start of drawing")
-    print(input$mapedit_draw_start)
-  })
-  
-  # Stop of Drawing
-  observeEvent(input$mapedit_draw_stop, {
-    print("Stopped drawing")
-    print(input$mapedit_draw_stop)
-  })
-  
-  # New Feature
-  observeEvent(input$mapedit_draw_new_feature, {
-    print("New Feature")
-    print(input$mapedit_draw_new_feature)
-  })
-  
-  # Edited Features
-  observeEvent(input$mapedit_draw_edited_features, {
-    print("Edited Features")
-    print(input$mapedit_draw_edited_features)
-  })
-  
-  # Deleted features
-  observeEvent(input$mapedit_draw_deleted_features, {
-    print("Deleted Features")
-    print(input$mapedit_draw_deleted_features)
-  })
-  
-  # We also listen for draw_all_features which is called anytime
-  # features are created/edited/deleted from the map
-  observeEvent(input$mapedit_draw_all_features, {
-    print("All Features")
-    print(input$mapedit_draw_all_features)
-  })
-
 })

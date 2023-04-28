@@ -189,10 +189,16 @@ get_map_data <- function(
   
   return_type = return_type[1]
   
+  message("get_map_data() begin ~ {Sys.time()}")
+  
+  # message(glue("  is.null(aoi_ewkt): {is.null(aoi_ewkt)}"))
+  # message(glue("  aoi_keys: {paste(aoi_keys, collapse = ', ')}"))
+  
   # variable    = "ctd_bottles.t_degc" # input$sel_var
   # value       = "avg"                # input$sel_val
   # aoi_ewkt     = NULL
-  # aoi_keys    = c("cc_nearshore-standard","cc_nearshore-extended","cc_offshore-standard","cc_offshore-extended")
+  # # aoi_keys    = c("cc_nearshore-standard","cc_nearshore-extended","cc_offshore-standard","cc_offshore-extended")
+  # aoi_keys    = c("boem-wpa_NI10-03", "boem-wpa_NK10-01")
   # date_beg    = as.Date(today() - dyears(5))  # input$sel_date_range[1]
   # date_end    = rng_dates$max             # input$sel_date_range[2]
   # date_qrtr   = c(1, 2)
@@ -200,6 +206,7 @@ get_map_data <- function(
   # depth_m_max = 515                  # input$sel_depth_range[2]
   # n_bins      = 7
   # return_type = "polygons"
+  # dir_cache   = here::here("cache")
   
   # * check inputs -----
   stopifnot(is.null(aoi_ewkt) | is.null(aoi_keys))
@@ -237,6 +244,7 @@ get_map_data <- function(
       raster_tif       = update_idw_stats(hash, download = "rast"))
     
     # return output
+    message("get_map_data() exists, end ~ {Sys.time()}")
     return(
       switch(
         return_type,
@@ -257,6 +265,9 @@ get_map_data <- function(
     date_qrtr   = date_qrtr,
     depth_m_min = depth_m_min, 
     depth_m_max = depth_m_max)
+  
+  if (nrow(pts) == 0)
+    return(NULL)
   
   if (return_type == "points")
     return(pts)
@@ -297,6 +308,8 @@ get_map_data <- function(
   #   create_index(con, "idw_stats", "hash", is_unique = T)
   dbWriteTable(con, "idw_stats", row_idw_stats, append=T)
 
+  message("get_map_data() created, end ~ {Sys.time()}")
+  
   # * return_type -----
   switch(
     return_type,
@@ -307,9 +320,14 @@ get_map_data <- function(
 
 }
 
-map_base <- function(base_opacity=0.5, ...){
+map_base <- function(
+    base_opacity       = 0.5, 
+    zoomControl        = T,
+    attributionControl = F){
   
-  leaflet(...) |> 
+  leaflet(options = leafletOptions(
+    zoomControl        = zoomControl,
+    attributionControl = attributionControl)) |> 
     # add base: blue bathymetry and light brown/green topography
     addProviderTiles(
       "Esri.OceanBasemap",

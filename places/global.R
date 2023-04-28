@@ -5,7 +5,7 @@
 
 librarian::shelf(
   # calcofi/calcofi4r,
-  dplyr, glue, here, leaflet, lubridate, 
+  dplyr, DT, glue, here, leaflet, lubridate, 
   shiny, shinydashboard)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here("../calcofi4r"), force=T)  # install local
@@ -26,14 +26,14 @@ d_vars  <- tbl(con, "field_labels") |>
   arrange(plot_title) |> 
   collect()
 
-# aoi: default Area of Interest
-aoi_keys <- c(
+aoi_cat_init <- "CalCOFI Zones"
+aoi_keys_init <- c(
   "cc_nearshore-extended",
   "cc_offshore-extended",
   "cc_nearshore-standard",
   "cc_offshore-standard")
-aoi <- cc_places |>
-  filter(
-    key %in% aoi_keys) |> 
-  st_union()
-# mapview::mapView(aoi)
+d_places <- cc_places |> 
+  st_drop_geometry() |> 
+  filter(category == aoi_cat_init)
+aoi_rows_init <- which(d_places$key %in% aoi_keys_init)
+  
