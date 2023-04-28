@@ -1,3 +1,8 @@
+# TODO:
+# - show: points, raster, polygons
+# - download: points, raster, polygons
+# - play: animate window of time on bottom of map
+
 librarian::shelf(
   # calcofi/calcofi4r,
   dplyr, glue, here, leaflet, lubridate, 
