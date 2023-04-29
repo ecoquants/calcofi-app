@@ -1,15 +1,14 @@
 # TODO:
 # - show: points, raster, polygons
-# - download: points, raster, polygons
 # - play: animate window of time on bottom of map
 
 librarian::shelf(
-  # calcofi/calcofi4r,
-  dplyr, DT, ggplot2, glue, here, leaflet, lubridate, 
+  calcofi/calcofi4r,
+  dplyr, DT, dygraphs, ggplot2, glue, here, leaflet, lubridate, 
   plotly, shiny, shinydashboard, shinyjs)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
-# devtools::install_local(here("../calcofi4r"), force=T)  # install local
-devtools::load_all(here("../calcofi4r"))                # debug
+# devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
+# devtools::load_all(here("../calcofi4r"))                # debug
 
 source(here("libs/db.R"))         # con: database connection 
 source(here("libs/functions.R"))
