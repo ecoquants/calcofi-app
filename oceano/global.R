@@ -39,9 +39,8 @@ ctdcast_depths <- dbGetQuery(
   con, 
   "SELECT MAX(depthm) max 
    FROM ctd_bottles")
-# UNION
-# SELECT depthm FROM ctdcast_bottle_dic) x")
-
+    # UNION
+    # SELECT depthm FROM ctdcast_bottle_dic) x")
 
 # d_vars
 d_vars    <- calcofi4r::get_variables()

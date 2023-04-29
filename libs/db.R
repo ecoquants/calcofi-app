@@ -25,10 +25,6 @@ con <- DBI::dbConnect(
   user     = "admin",
   password = readLines(db_pass_txt))
 
-# test connection:
-# dbListTables(con)
-
-
 # helper functions ----
 glue2 <- function(x, null_str="", .envir = sys.frame(-3), ...){
   # handle NULLs inside glue string as empty character
@@ -40,3 +36,7 @@ glue2 <- function(x, null_str="", .envir = sys.frame(-3), ...){
       out }}
   glue(x, .transformer = null_transformer(null_str), .envir = .envir, ...)
 }
+q <- function(sql){ dbSendQuery(con, sql) }
+
+# test connection:
+# dbListTables(con)
