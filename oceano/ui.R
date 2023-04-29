@@ -1,6 +1,11 @@
 dashboardPage(
+  title = "Oceano App | CalCOFI.io",
   dashboardHeader(
-    title="CalCOFI Contour App"),
+    title = tagList(
+      a(
+        img(src = './logo_calcofi.svg', height="50px"),
+        href = 'http://calcofi.io'),
+      "Oceano App") ),
   
   dashboardSidebar(
     
