@@ -63,7 +63,7 @@ dashboardPage(
         # TODO: try PERCENTILE_CONT(0.5) for median and other, eg p10 or p90
         #   * [How to Calculate Median in PostgreSQL - Ubiq BI](https://ubiq.co/database-blog/calculate-median-postgresql/)
         #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
-        leafletOutput("map")
+        leafletOutput("map", width="100%", height="70vh")
         # TODO: add download links
         #downloadLink("dl_tif", "Download data (*.tif)")
       ),
@@ -80,7 +80,7 @@ dashboardPage(
             # climatic
             "quarter","month","week","julianday","hour"),
           "year"),
-        dygraphOutput("plot_ts"),
+        dygraphOutput("plot_ts", width="100%", height="70vh"),
         downloadLink("dl_ts_csv", "Download data (*.csv)") ),
 
       tabPanel(
@@ -89,7 +89,7 @@ dashboardPage(
           "num_depth_bins",
           "Depth bins",
           10),
-        plotly::plotlyOutput("plot_depth"),
+        plotly::plotlyOutput("plot_depth", width="100%", height="70vh"),
         downloadLink("dl_depth_csv", "Download data (*.csv)") )
     ))
 )
