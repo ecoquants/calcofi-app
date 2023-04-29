@@ -1,6 +1,6 @@
 dashboardPage(
   dashboardHeader(
-    title="CalCOFI Contour App"),
+    title="CalCOFI Oceano App"),
   
   dashboardSidebar(
     
