@@ -171,6 +171,109 @@ get_points <- function(
   st_read(con, query = pts_sql, quiet = T) # mapview::mapView(pts)
 }
 
+
+get_depth_profile_data <- function(
+    variable,
+    aoi_ewkt = NULL, # for custom drawn AOI
+    aoi_keys = c(
+      "cc_nearshore-standard",
+      "cc_nearshore-extended",
+      "cc_offshore-standard",
+      "cc_offshore-extended"),  # lookup in db.places (also calcofi4r::cc_places)
+    date_beg, date_end, date_qrtr = 1,
+    depth_m_min, depth_m_max,
+    n_bins = 10){
+  
+  # variable = "ctd_bottles.t_degc"
+  # aoi_ewkt = NULL
+  # aoi_keys = c(
+  #   "cc_nearshore-standard",
+  #   "cc_nearshore-extended",
+  #   "cc_offshore-standard",
+  #   "cc_offshore-extended")
+  # date_beg = "2015-01-25"
+  # date_end = "2020-01-26"
+  # date_qrtr = 1
+  # depth_m_min = 0
+  # depth_m_max = 515
+  # n_bins = 10
+  
+  # variable
+  v <- get_variable(variable)
+  
+  # area of interest
+  aoi_sql <- get_aoi_sql(aoi_ewkt = aoi_ewkt, aoi_keys = aoi_keys)
+
+  q_from <- case_when(
+    v$tbl == "ctd_bottles"    ~ "ctd_casts JOIN ctd_bottles USING (cast_count)",
+    v$tbl == "ctd_dic"        ~ "ctd_casts JOIN ctd_bottles USING (cast_count) JOIN ctd_dic USING (btl_cnt)")
+
+  q_tbl_geom <- case_when(
+    v$tbl %in% c("ctd_bottles", "ctd_dic") ~ "ctd_casts.geom")
+
+  d_sql <- glue("
+    WITH
+    aoi AS ({aoi_sql})
+    SELECT
+      width_bucket(depth_m::int4, {depth_m_min}, {depth_m_max}, {n_bins}) AS depth_bin,
+      min(depth_m::int4) AS depth_min,
+      avg(depth_m::int4) AS depth_avg,
+      max(depth_m::int4) AS depth_max,
+      int4range(min(depth_m::int4), max(depth_m::int4), '[]')             AS depth_bin_label,
+      AVG({v$fld})    AS v_avg,
+      STDDEV({v$fld}) AS v_stddev,
+      COUNT({v$fld})  AS v_nobs
+    FROM {q_from}
+      JOIN aoi ON ST_Covers(aoi.geom, {q_tbl_geom})
+    WHERE 
+      {v$tbl}.{v$fld} IS NOT NULL AND 
+      ({v$tbl}.depth_m BETWEEN {depth_m_min} AND {depth_m_max}) AND
+      (date BETWEEN '{date_beg}' AND '{date_end}') AND
+      DATE_PART('quarter', date) IN ({paste(date_qrtr, collapse=',')})
+    GROUP BY depth_bin")
+  # message(d_sql)
+  
+  d <- dbGetQuery(con, d_sql)
+  d
+}
+
+plot_depth_profile <- function(d, v, interactive = T){
+  librarian::shelf(
+    ggplot2, plotly)
+  
+  p <- d |> 
+    mutate(
+      txt = glue(
+        "{v$plot_label}:
+        average: {round(v_avg, 3)}
+        +/- stddev: {round(v_stddev, 3)}
+        for Depth (m): {depth_bin_label}
+        # observations: {format(as.numeric(v_nobs), big.mark=',')}")) |> 
+    ggplot() +
+    geom_rect(
+      aes(
+        xmin = v_avg - v_stddev, 
+        xmax = v_avg + v_stddev, 
+        ymin = depth_min, 
+        ymax = depth_max), 
+      fill = "gray", color = "gray") +
+    geom_line(
+      aes(x=v_avg, y=depth_avg),
+      color = "red") +
+    geom_point(
+      aes(x=v_avg, y=depth_avg, text=txt),
+      color = "red") +
+    scale_y_reverse() + 
+    theme_minimal() +
+    labs(
+      x = v$plot_label, y = "Depth (m)")
+  
+  if (interactive)
+    p <- plotly::ggplotly(p, tooltip = "text")
+  
+  p
+}
+
 get_map_data <- function(
     variable, value, 
     aoi_ewkt = NULL, # for custom drawn AOI
@@ -318,6 +421,108 @@ get_map_data <- function(
     raster           = rast(idw_tif),
     raster_tif       = idw_tif)
 
+}
+
+get_timeseries_data <- function(
+    variable = "ctdcast_bottle.t_deg_c",
+    aoi_wkt = NULL,
+    depth_m_min = NULL, depth_m_max = NULL,
+    date_beg = NULL, date_end = NULL,
+    time_step = "year",
+    stats = c("p10", "mean", "p90")){
+  
+  # DEBUG
+  # variable = "ctd_bottles.t_degc"
+  # aoi_sf <- st_read(con, "aoi_fed_sanctuaries") %>%
+  #   filter(nms == "CINMS")
+  # aoi_wkt <- aoi_sf %>%
+  #   pull(geom) %>%
+  #   st_as_text()
+  # st_bbox(aoi_sf) %>% st_as_sfc() %>% st_as_text()
+  # aoi_wkt <- "POLYGON ((-120.6421 33.36241, -118.9071 33.36241, -118.9071 34.20707, -120.6421 34.20707, -120.6421 33.36241))"
+  # date_beg = NULL; date_end = NULL
+  # time_step = "year"
+  # stats = "p10, mean, p90"
+  # depth_m_min = NULL; depth_m_max = NULL
+  
+  # TODO: 
+  
+  # check input arguments ----
+  
+  # variable
+  v <- tbl(con, "field_labels") %>% 
+    filter(table_field == !!variable) %>% 
+    collect() %>% 
+    separate(table_field, into=c("tbl", "fld"), sep="\\.", remove=F)
+  stopifnot(nrow(v) == 1)
+  
+  # TODO: is_valid_date(), is_valid_aoi(): wkt, aoi_id
+  # if (!is.null(aoi_wkt))
+  #   aoi_sf <- st_as_sf(tibble(geom = aoi_wkt), wkt = "geom") %>% 
+  #     st_set_crs(4326)  # mapview::mapview(aoi_sf)
+  
+  # TODO: document DATE_PART() options
+  # https://www.postgresql.org/docs/13/functions-datetime.html#FUNCTIONS-DATETIME-EXTRACT
+  # is_valid_aoi(aoi)
+  # is_valid_date(date_beg)
+  # is_valid_date(date_end)
+  
+  stopifnot(time_step %in% c("decade","year","year_quarter","year_month","year_week","date","quarter","month","week","julianday","hour"))
+  # TODO: Describe non- vs climatalogical vars: "quarter","month","week","julianday"
+  q_time_step <- switch(
+    time_step,
+    decade       = "DATE_PART('decade' , date) * 10)",
+    year         = "DATE_PART('year'   , date)",
+    year_quarter = "DATE_PART('year'   , date) + (DATE_PART('quarter', date) * 0.1 )",
+    year_month   = "DATE_PART('year'   , date) + (DATE_PART('month', date)   * 0.01)",
+    year_week    = "DATE_PART('year'   , date) + (DATE_PART('week', date)    * 0.01)",
+    date         = "date",
+    quarter      = "DATE_PART('quarter', date)",
+    month        = "DATE_PART('month'  , date)",
+    week         = "DATE_PART('week'   , date)",
+    julianday    = "DATE_PART('doy'    , date)",
+    hour         = "DATE_PART('hour'   , datetime)")
+  if (is.null(q_time_step))
+    q_time_step = "datetime"
+  
+  q_from <- case_when(
+    v$tbl == 'ctd_bottles'     ~ "ctd_casts JOIN ctd_bottles USING (cast_count)",
+    v$tbl == 'ctd_bottles_dic' ~ "ctd_casts JOIN ctd_bottles USING (cast_count) JOIN ctd_dic USING (btl_cnt)")
+  
+  q_where_aoi = ifelse(
+    !is.null(aoi_wkt),
+    glue("ST_Intersects(ST_GeomFromText('{aoi_wkt}', 4326), ctd_casts.geom)"),
+    "TRUE")
+  
+  q_where_date = glue("date >= '{date_beg}' AND date <= '{date_end}'")
+  
+  q_where_depth = glue("depth_m >= {depth_m_min} AND depth_m <= {depth_m_max}")
+  
+  # TODO: get median, percentile ----
+  # https://leafo.net/guides/postgresql-calculating-percentile.html
+  # https://www.postgresql.org/docs/9.4/functions-aggregate.html
+  
+  # TODO: incorporate different stats besides mean & stddev, which are temporarily hard-coded
+  q <- glue(
+    "SELECT {q_time_step} AS {time_step}, AVG({v$tbl}.{v$fld}) AS {v$fld}_avg, STDDEV({v$tbl}.{v$fld}) AS {v$fld}_sd, COUNT(*) AS n_obs
+    FROM {q_from}
+    WHERE {q_where_aoi} AND {q_where_date} AND {q_where_depth}
+    GROUP BY {q_time_step} 
+    ORDER BY {time_step}")
+  # message(q)
+  d <- dbGetQuery(con, q)
+  
+  # TODO: add attributes like Cristina's original function  
+  # attr(d_aoi_summ, "labels")    <- eval(parse(text = glue("var_lookup$`{var}`")))
+  # attr(d_aoi_summ, "time_step") <- time_step
+  # attr(d_aoi_summ, "date_msg")  <- glue("This dataset was summarized by {time_step}.")
+  # attr(d_aoi_summ, "aoi") <- ifelse(
+  #   empty_data_for_var,
+  #   glue("No data were found for {var} in this area of interest. Summaries were conducted across all existing data points."),
+  #   glue("Data for {var} in selected area of interest")
+  # )
+  
+  d
 }
 
 map_base <- function(

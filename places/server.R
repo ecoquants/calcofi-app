@@ -306,4 +306,114 @@ shinyServer(function(input, output, session) {
     
   })
   
+  # get_timeseries_data() ----
+  get_ts_data <- reactive({
+    
+    # handle special inputs
+    input_stats <- c("mean", "sd")
+    # TODO: translate input$sel_stats
+    
+    # get aoi_wkt
+    if (!is.null(rxvals$aoi_ewkt)){
+      aoi_wkt <- rxvals$aoi_ewkt |> 
+        str_replace("SRID=.*;", "")
+      browser()
+    } else {
+      aoi <- get_aoi(
+        aoi_keys = rxvals$aoi_keys,
+        aoi_ewkt = NULL)
+      aoi_wkt <- st_as_text(st_geometry(aoi))
+    }
+    
+    get_timeseries_data(
+      variable    = input$sel_var,
+      aoi_wkt     = aoi_wkt,
+      depth_m_min = input$sel_depth_range[1], 
+      depth_m_max = input$sel_depth_range[2],
+      date_beg    = input$sel_date_range[1], 
+      date_end    = input$sel_date_range[2], 
+      time_step   = input$sel_time_step,
+      stats       = input_stats)
+    
+  })
+  
+  # plot_ts ----
+  output$plot_ts <- renderDygraph({
+    
+    d <- get_ts_data()
+    
+    v <- d_vars %>% 
+      filter(table_field == input$sel_var)
+    
+    names(d) <- c("time", "avg", "sd", "n")
+    d$lwr <- d$avg - d$sd
+    d$upr <- d$avg + d$sd
+    
+    d %>% 
+      select(time, avg, lwr, upr) %>% 
+      dygraph(main = v$plot_title) %>%
+      dySeries(
+        c("lwr", "avg", "upr"), 
+        label = v$plot_label, color = v$plot_color) # %>%
+    # dyOptions(drawGrid = input$showgrid)
+  })
+  
+  # * dl_ts_csv: download timeseries csv ----
+  output$dl_ts_csv <- downloadHandler(
+    filename = function() {
+      glue("calcofi_time-series_{input$sel_var}.csv")
+    },
+    content = function(file) {
+      write_csv(get_ts_data(), file)
+    }
+  )
+  
+  # get_depth_data() ----
+  get_depth_data <- reactive({
+    
+    get_depth_profile_data(
+      variable      = input$sel_var,
+      aoi_keys      = rxvals$aoi_keys,
+      aoi_ewkt      = rxvals$aoi_ewkt, 
+      depth_m_min   = input$sel_depth_range[1],
+      depth_m_max   = input$sel_depth_range[2],
+      date_qrtr     = input$sel_qtr,
+      date_beg      = input$sel_date_range[1],
+      date_end      = input$sel_date_range[2])
+  })
+  
+  # * dl_depth_csv: download depth csv ----
+  output$dl_depth_csv <- downloadHandler(
+    filename = function() {
+      glue("calcofi_depth-profile_{input$sel_var}.csv")
+    },
+    content = function(file) {
+      write_csv(get_depth_data(), file)
+    }
+  )
+  
+  # plot_depth ----
+  output$plot_depth <- renderPlotly({
+
+    d <- get_depth_data()
+    
+    v <- d_vars %>% 
+      filter(table_field == input$sel_var)
+    
+    plot_depth_profile(d, v, interactive = T)
+  })
+  
+  
+  # observe tab ----
+  observeEvent(input$tabs, {
+    
+    # message(glue("tab:", input$tabs))
+    switch(
+      input$tabs,
+      map   = {enable( "sel_val");  enable("sel_qtr")},
+      time  = {disable("sel_val"); disable("sel_qtr")},
+      depth = {disable("sel_val");  enable("sel_qtr")})
+
+  })
+  
 })

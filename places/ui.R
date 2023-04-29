@@ -12,14 +12,6 @@ dashboardPage(
         d_vars$plot_label),
       "ctd_bottles.t_degc"),
     
-    selectInput(
-      "sel_val",
-      "Value",
-      c("avg", "min", "max", "stddev")),
-    # TODO: try PERCENTILE_CONT(0.5) for median and other, eg p10 or p90
-    #   * [How to Calculate Median in PostgreSQL - Ubiq BI](https://ubiq.co/database-blog/calculate-median-postgresql/)
-    #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
-    
     sliderInput(
       "sel_depth_range",
       "Depth(m) range",
@@ -43,7 +35,7 @@ dashboardPage(
       "Date range",
       min   = rng_dates$min,
       max   = rng_dates$max,
-      start = as.Date(today() - dyears(5)),
+      start = as.Date(rng_dates$max - dyears(5)),
       end   = rng_dates$max,
       startview = "year"),
     
@@ -58,26 +50,46 @@ dashboardPage(
   ),
   
   dashboardBody(
+    shinyjs::useShinyjs(),
     tags$head(tags$link(rel="stylesheet", type="text/css", href="styles.css")),
     tabsetPanel(
       id = "tabs",
       tabPanel(
         title = "Map", value = "map",
+        selectInput(
+          "sel_val",
+          "Value",
+          c("avg", "min", "max", "stddev")),
+        # TODO: try PERCENTILE_CONT(0.5) for median and other, eg p10 or p90
+        #   * [How to Calculate Median in PostgreSQL - Ubiq BI](https://ubiq.co/database-blog/calculate-median-postgresql/)
+        #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
         leafletOutput("map")
         # TODO: add download links
         #downloadLink("dl_tif", "Download data (*.tif)")
       ),
       
-      # tabPanel(
-      #   title = "Time series", value = "time",
-      #   dygraphOutput("plot_ts"),
-      #   downloadLink("dl_csv", "Download data (*.csv)")),
-      # 
-      # tabPanel(
-      #   title = "Depth Profile", value = "depth",
-      #   "Interactive Depth Profiles coming soon...",br(),
-      #   "similar to ", a(href="https://shiny.calcofi.io/capstone/", "Capstone app"),br(),
-      #   img(src='depth_profile_capstone.png')) # , align = "right"),
-      
+      tabPanel(
+        title = "Time series", value = "time",
+        selectInput(
+          "sel_time_step",
+          "Temporal resolution",
+          c("decade",
+            "year",
+            "year_quarter","year_month","year_week",
+            "date",
+            # climatic
+            "quarter","month","week","julianday","hour"),
+          "year"),
+        dygraphOutput("plot_ts"),
+        downloadLink("dl_ts_csv", "Download data (*.csv)") ),
+
+      tabPanel(
+        title = "Depth profile", value = "depth",
+        numericInput(
+          "num_depth_bins",
+          "Depth bins",
+          10),
+        plotly::plotlyOutput("plot_depth"),
+        downloadLink("dl_depth_csv", "Download data (*.csv)") )
     ))
 )
