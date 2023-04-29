@@ -1,8 +1,10 @@
 dashboardPage(
+  title = "Oceano App | CalCOFI.io",
   dashboardHeader(
     title = tagList(
-      a(tags$img(src='https://calcofi.io/calcofi4r/reference/figures/logo_calcofi4r.png'),
-      href='http://calcofi.io'),
+      a(
+        img(src = './logo_calcofi.svg', height="50px"),
+        href = 'http://calcofi.io'),
       "Oceano App") ),
   
   dashboardSidebar(
