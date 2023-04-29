@@ -1,105 +1,97 @@
 dashboardPage(
   dashboardHeader(
-    title="CalCOFI Oceanographic App"),
-
+    title="CalCOFI Contour App"),
+  
   dashboardSidebar(
+    
     selectInput(
       "sel_var",
       "Variable",
       setNames(
         d_vars$table_field,
-        d_vars$plot_label)),
-    uiOutput("ui_stats"),
+        d_vars$plot_label),
+      "ctd_bottles.t_degc"),
+    
     sliderInput(
       "sel_depth_range",
       "Depth(m) range",
-      min = 0, max = ctdcast_depths$max,
+      min = 0, 
+      max = rng_depths$max,
       step = 10,
-      value = c(0, ctdcast_depths$max)),
+      value = c(0, 515)),
+    
+    sel_qtr <- selectInput(
+      "sel_qtr",
+      "Season",
+      c(Winter = 1, 
+        Spring = 2,
+        Summer = 3,
+        Fall   = 4),
+      selected = 1:2,
+      multiple = T),
     
     dateRangeInput(
       "sel_date_range",
       "Date range",
-      ctdcast_dates$min,
-      ctdcast_dates$max,
+      min   = rng_dates$min,
+      max   = rng_dates$max,
+      start = as.Date(rng_dates$max - dyears(5)),
+      end   = rng_dates$max,
       startview = "year"),
     
-    selectInput(
-      "sel_rgn",
-      "Location",
-      list(
-        "CalCOFI" = c(
-          `Core`      = "cc_core",
-          `Extended`  = "cc_extended",
-          `Nearshore` = "cc_nearshore",
-          `Offshore`  = "cc_offshore"),
-        "National Marine Sanctuaries" = c(
-          `Channel Islands` = "onms_ci",
-          `Monterey Bay`    = "onms_mb"))),
+    actionButton(
+      "btn_update", "Update", icon = icon("rotate"), width = "200px"),
     
-    #wellPanel(
     div(
       class="shiny-input-container",
-      # htmltools::tag(
-      #   "label", 
-      # htmltools::tagList(
-      # icon("map-marked"), 
-      "Location (effort)",
-      leafletOutput("map_side", height = 200),
-      actionButton(
-        "btn_mod_map", "Add", icon = icon("plus"), width = "200px"))
+      leafletOutput("map_side", height = "150px")),
+    actionButton(
+      "btn_aoi", "Area", icon = icon("edit"), width = "200px")
   ),
   
   dashboardBody(
+    shinyjs::useShinyjs(),
     tags$head(tags$link(rel="stylesheet", type="text/css", href="styles.css")),
     tabsetPanel(
       id = "tabs",
-      # tabPanel(
-      #   "Area",
-      #   # selectInput(
-      #   #   "sel_aoi_method",
-      #   #   "Method", c("Draw", "Select")),
-      #   helpText("Define the area of interest by drawing a polygon or selecting 
-      #      an existing feature."),
-      #   switchInput(
-      #     "sel_aoi_draw",
-      #     "Method", F,
-      #     onLabel = "Draw",
-      #     offLabel = "Select"
-      #   ),
-      #   selectInput(
-      #     "sel_aoi_category",
-      #     "Category", 
-      #     list(
-      #       # `CalCOFI` = c(
-      #       #   "Stations" = "cc_stations"),
-      #       `Federal` = c(
-      #         "National Sanctuaries" = "aoi_fed_sanctuaries"))),
-      #       # `State`   = c(
-      #       #   "MPA Regions"          = "aoi_ca_mpargns"))),
-      #   leafletOutput("map_aoi")),
       tabPanel(
         title = "Map", value = "map",
-        # selectInput(
-        #   "sel_cruise",
-        #   "Cruise",
-        #   sort(d_cruises$cruiseid, decreasing=T)),
-        # actionButton("btn_r", "Interpolate Variable from Cruise (within Depth range)"),
-        # br(),
-        # leafletOutput("map_r")
-        leafletOutput("map")
-        # TODO: fix dl_tif, not working
-        #downloadLink("dl_tif", "Download data (*.tif)")
+        selectInput(
+          "sel_val",
+          "Value",
+          c("avg", "min", "max", "stddev")),
+        # TODO: try PERCENTILE_CONT(0.5) for median and other, eg p10 or p90
+        #   * [How to Calculate Median in PostgreSQL - Ubiq BI](https://ubiq.co/database-blog/calculate-median-postgresql/)
+        #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
+        leafletOutput("map", width="100%", height="70vh"),
+        "Download: ",
+        downloadLink("dl_map_csv", "points (*.csv)"), ", ",
+        div(style="display: inline-block; vertical-align:top;",
+          uiOutput("dl_map_other") )
       ),
+      
       tabPanel(
         title = "Time series", value = "time",
-        dygraphOutput("plot_ts"),
-        downloadLink("dl_csv", "Download data (*.csv)")),
+        selectInput(
+          "sel_time_step",
+          "Temporal resolution",
+          c("decade",
+            "year",
+            "year_quarter","year_month","year_week",
+            "date",
+            # climatic
+            "quarter","month","week","julianday","hour"),
+          "year"),
+        dygraphOutput("plot_ts", width="100%", height="70vh"),
+        downloadLink("dl_ts_csv", "Download data (*.csv)") ),
+
       tabPanel(
-        title = "Depth Profile", value = "depth",
-        "Interactive Depth Profiles coming soon...",br(),
-        "similar to ", a(href="https://shiny.calcofi.io/capstone/", "Capstone app"),br(),
-        img(src='depth_profile_capstone.png') # , align = "right"),
-        )
+        title = "Depth profile", value = "depth",
+        numericInput(
+          "num_depth_bins",
+          "Depth bins",
+          10),
+        plotly::plotlyOutput("plot_depth", width="100%", height="70vh"),
+        downloadLink("dl_depth_csv", "Download data (*.csv)") )
     ))
 )
