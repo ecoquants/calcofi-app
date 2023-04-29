@@ -260,9 +260,10 @@ plot_depth_profile <- function(d, v, interactive = T){
     geom_line(
       aes(x=v_avg, y=depth_avg),
       color = "red") +
-    geom_point(
-      aes(x=v_avg, y=depth_avg, text=txt),
-      color = "red") +
+    suppressWarnings(
+      geom_point(
+        aes(x=v_avg, y=depth_avg, text=txt),
+        color = "red")) +
     scale_y_reverse() + 
     theme_minimal() +
     labs(
@@ -292,7 +293,7 @@ get_map_data <- function(
   
   return_type = return_type[1]
   
-  message("get_map_data() begin ~ {Sys.time()}")
+  # message("get_map_data() begin ~ {Sys.time()}")
   
   # message(glue("  is.null(aoi_ewkt): {is.null(aoi_ewkt)}"))
   # message(glue("  aoi_keys: {paste(aoi_keys, collapse = ', ')}"))
@@ -347,14 +348,15 @@ get_map_data <- function(
       raster_tif       = update_idw_stats(hash, download = "rast"))
     
     # return output
-    message("get_map_data() exists, end ~ {Sys.time()}")
-    return(
-      switch(
-        return_type,
-        polygons         = st_read(idw_geo, quiet = T),
-        polygons_geojson = idw_geo,
-        raster           = rast(idw_tif),
-        raster_tif       = idw_tif))
+    # message("get_map_data() exists, end ~ {Sys.time()}")
+    o <- switch(
+      return_type,
+      polygons         = st_read(idw_geo, quiet = T),
+      polygons_geojson = idw_geo,
+      raster           = rast(idw_tif),
+      raster_tif       = idw_tif)
+    attr(o, "hash") <- hash
+    return(o)
   }
   
   # * otherwise has_idw = F, continue to get points ----
@@ -411,15 +413,17 @@ get_map_data <- function(
   #   create_index(con, "idw_stats", "hash", is_unique = T)
   dbWriteTable(con, "idw_stats", row_idw_stats, append=T)
 
-  message("get_map_data() created, end ~ {Sys.time()}")
+  # message("get_map_data() created, end ~ {Sys.time()}")
   
   # * return_type -----
-  switch(
+  o <- switch(
     return_type,
     polygons         = st_read(idw_geo, quiet = T),
     polygons_geojson = idw_geo,
     raster           = rast(idw_tif),
     raster_tif       = idw_tif)
+  attr(o, "hash") <- hash
+  o
 
 }
 

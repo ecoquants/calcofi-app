@@ -63,9 +63,11 @@ dashboardPage(
         # TODO: try PERCENTILE_CONT(0.5) for median and other, eg p10 or p90
         #   * [How to Calculate Median in PostgreSQL - Ubiq BI](https://ubiq.co/database-blog/calculate-median-postgresql/)
         #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
-        leafletOutput("map", width="100%", height="70vh")
-        # TODO: add download links
-        #downloadLink("dl_tif", "Download data (*.tif)")
+        leafletOutput("map", width="100%", height="70vh"),
+        "Download: ",
+        downloadLink("dl_map_csv", "points (*.csv)"), ", ",
+        div(style="display: inline-block; vertical-align:top;",
+          uiOutput("dl_map_other") )
       ),
       
       tabPanel(

@@ -1,7 +1,9 @@
 shinyServer(function(input, output, session) {
   
   rxvals <- reactiveValues(
-    map_init = F,
+    hash            = NULL,
+    map_init        = F,
+    tbl_places_init = F,
     aoi_cat  = aoi_cat_init, 
     aoi_keys = aoi_keys_init,
     aoi_ewkt = NULL,
@@ -21,7 +23,10 @@ shinyServer(function(input, output, session) {
       date_qrtr     = input$sel_qtr,
       date_beg      = input$sel_date_range[1],
       date_end      = input$sel_date_range[2],
-      return_type   = "polygons"))
+      return_type   = "polygons",
+      dir_cache     = dir_cache))
+    
+    rxvals$hash <- attr(plys, "hash")
     
     title = d_vars |> 
       filter(table_field == isolate(input$sel_var)) |> 
@@ -54,7 +59,10 @@ shinyServer(function(input, output, session) {
       date_qrtr     = input$sel_qtr,
       date_beg      = input$sel_date_range[1],
       date_end      = input$sel_date_range[2],
-      return_type   = "polygons")
+      return_type   = "polygons",
+      dir_cache     = dir_cache)
+    
+    rxvals$hash <- attr(plys, "hash")
     
     if (is.null(plys)){
       showNotification(
@@ -117,12 +125,13 @@ shinyServer(function(input, output, session) {
   
   # tbl_places ----
   output$tbl_places <- renderDataTable({
+    rxvals$tbl_places_init = T
     get_tbl_places() |> 
       select(name)
   },
   options = list(pageLength = 6),
   server = FALSE,
-  selection = list(mode = 'multiple', selected = rxvals$aoi_rows) )
+  selection = list(mode = 'multiple') )
   
   # observeEvent tbl_places_rows_selected ----
   observeEvent(input$tbl_places_rows_selected,{
@@ -143,6 +152,7 @@ shinyServer(function(input, output, session) {
   # map_places ----
   output$map_places <- renderLeaflet({
     req(input$sel_place_category)
+    req(rxvals$tbl_places_init)
 
     # rxvals <- list(aoi_keys =  c(
     #   "cc_nearshore-extended",
@@ -160,12 +170,56 @@ shinyServer(function(input, output, session) {
       filter(
         key %in% rxvals$aoi_keys)
     
+    dataTableProxy("tbl_places") |> 
+      selectRows(rxvals$aoi_rows)
+    
     map_base() |> 
       addPolygons(
         data = plys, layerId = ~key) |> 
       addPolygons(
         data = plys_aoi, layerId = ~key,
         group = "plys_aoi", color = "yellow")
+  })
+  
+  # dl_map_csv: download points link ----
+  output$dl_map_csv <- downloadHandler(
+    filename = function() {
+      glue("calcofi_map-points_{input$sel_var}.csv")
+    },
+    content = function(file) {
+      pts <- isolate(get_map_data(
+        variable      = input$sel_var,
+        value         = input$sel_val,
+        aoi_keys      = rxvals$aoi_keys,
+        aoi_ewkt      = rxvals$aoi_ewkt, 
+        depth_m_min   = input$sel_depth_range[1],
+        depth_m_max   = input$sel_depth_range[2],
+        date_qrtr     = input$sel_qtr,
+        date_beg      = input$sel_date_range[1],
+        date_end      = input$sel_date_range[2],
+        return_type   = "points",
+        dir_cache     = dir_cache))
+    
+      pts |> 
+        mutate(
+          longitude = st_coordinates(st_geometry(pts))[,"X"],
+          latitude = st_coordinates(st_geometry(pts))[,"Y"]) |> 
+        st_drop_geometry() |> 
+        write_csv(file)
+    }
+  )
+  
+  # dl_map_other: download links ----
+  output$dl_map_other <- renderUI({
+    req(rxvals$hash)
+    
+    url_rast <- glue("{url_cache}/idw_{rxvals$hash}.tif")
+    url_plys <- glue("{url_cache}/idw_{rxvals$hash}.geojson")
+    
+    tagList(
+      a("raster (*.tif)", href = url_rast, target="_blank"),
+      ", ",
+      a("polygons (*.geojson)", href = url_plys, target="_blank"))
   })
   
   # observeEvent map_places_shape_click ----
@@ -180,7 +234,10 @@ shinyServer(function(input, output, session) {
       rxvals$aoi_keys <- c(rxvals$aoi_keys, key_click)
     }
     
-    rxvals$aoi_rows <- which(get_tbl_places()$key %in% rxvals$aoi_keys)
+    rxvals$aoi_rows <- which(isolate(get_tbl_places()$key) %in% rxvals$aoi_keys)
+    
+    dataTableProxy("tbl_places") |> 
+      selectRows(rxvals$aoi_rows)
     
     # message(glue("observeEvent map_places_shape_click, end - rxvals$aoi_keys: {paste(rxvals$aoi_keys, collapse =',')}"))
     # message(glue("observeEvent map_places_shape_click, end - rxvals$aoi_rows: {paste(rxvals$aoi_rows, collapse =',')}"))
@@ -198,7 +255,7 @@ shinyServer(function(input, output, session) {
     
     # browser()
     if (input$sel_place_category == rxvals$aoi_cat){
-      rxvals$aoi_rows <- which(get_tbl_places()$key %in% rxvals$aoi_keys)
+      rxvals$aoi_rows <- which(isolate(get_tbl_places()$key) %in% rxvals$aoi_keys)
     } else {
       rxvals$aoi_rows = NULL
     }
@@ -298,7 +355,7 @@ shinyServer(function(input, output, session) {
     # message(glue("observe mapedit_draw, almost end - input$tbl_places_rows_selected: {paste(input$tbl_places_rows_selected, collapse = ',')}"))
     # browser()
     dataTableProxy("tbl_places") |>
-      selectRows(c())
+      selectRows(NULL)
     leafletProxy("map_places") |>
       clearGroup("plys_aoi")
     
@@ -317,7 +374,6 @@ shinyServer(function(input, output, session) {
     if (!is.null(rxvals$aoi_ewkt)){
       aoi_wkt <- rxvals$aoi_ewkt |> 
         str_replace("SRID=.*;", "")
-      browser()
     } else {
       aoi <- get_aoi(
         aoi_keys = rxvals$aoi_keys,
