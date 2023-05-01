@@ -3,8 +3,8 @@ dashboardPage(
   dashboardHeader(
     title = tagList(
       a(
-        img(src = './logo_calcofi.svg', height="50px"),
-        href = 'http://calcofi.io'),
+        img(src = "./logo_calcofi.svg", height="50px"),
+        href = "https://calcofi.io"),
       "Oceano App") ),
   
   dashboardSidebar(
@@ -44,8 +44,12 @@ dashboardPage(
       end   = rng_dates$max,
       startview = "year"),
     
+    hr(), 
+    
     actionButton(
-      "btn_update", "Update", icon = icon("rotate"), width = "200px"),
+      "btn_update", strong("Update"), icon = icon("rotate"), width = "200px"),
+    
+    hr(), 
     
     div(
       class="shiny-input-container",

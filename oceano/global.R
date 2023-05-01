@@ -4,7 +4,7 @@
 
 librarian::shelf(
   calcofi/calcofi4r,
-  dplyr, DT, dygraphs, ggplot2, glue, here, leaflet, lubridate, 
+  dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, leaflet, lubridate, 
   plotly, shiny, shinydashboard, shinyjs)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
