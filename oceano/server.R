@@ -216,15 +216,6 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       
-      f_png <- glue("{dir_cache}/idw_{rxvals$hash}.png")
-      # message(glue("f_png: {f_png}"))
-      
-      if (file.exists(f_png)){
-        # message(glue("url_png: {url_cache}/idw_{rxvals$hash}.png"))
-        readPNG(f_png) |> 
-          writePNG(file)
-      }
-      
       plys <- isolate(get_map_data(
         variable      = input$sel_var,
         value         = input$sel_val,
@@ -245,18 +236,17 @@ shinyServer(function(input, output, session) {
         pull(plot_label) |> 
         paste(glue("<br>{isolate(input$sel_val)}"))
       
-      # TODO: turn off zoom and attribution
+      ctr <- input$map_center
       m <- map_base(
         zoomControl        = F,
         attributionControl = F) |>
-        add_contours(plys, title, add_lyrs_ctrl = F)
+        add_contours(plys, title, add_lyrs_ctrl = F) |> 
+        setView(ctr$lng, ctr$lat, input$map_zoom)
+      m
       
       htm <- tempfile(fileext = ".html")
-      htmlwidgets::saveWidget(widget = m, file = htm)
-      webshot::webshot(url = htm, file = f_png, delay = 2)
-      unlink(htm)
-      readPNG(f_png) |> 
-        writePNG(file)
+      m |> saveWidget(file = htm)
+      htm |> webshot(file = file, delay = 2)
     },
     contentType	= "image/png"
   )
