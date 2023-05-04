@@ -209,8 +209,8 @@ shinyServer(function(input, output, session) {
     }
   )
   
-  # dl_map_image: download image link ----
-  output$dl_map_img <- downloadHandler(
+  # dl_map_png: download image link ----
+  output$dl_map_png <- downloadHandler(
     filename = function() {
       glue("calcofi_map-image_{input$sel_var}.png")
     },
@@ -259,9 +259,9 @@ shinyServer(function(input, output, session) {
     url_plys <- glue("{url_cache}/idw_{rxvals$hash}.geojson")
     
     tagList(
-      a("raster (*.tif)", href = url_rast, target="_blank"),
+      a("raster.tif", href = url_rast, target="_blank"),
       ", ",
-      a("polygons (*.geojson)", href = url_plys, target="_blank"))
+      a("polygons.geojson", href = url_plys, target="_blank"))
   })
   
   # observeEvent map_places_shape_click ----
@@ -466,6 +466,38 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # dl_ts_png: download time series image link ----
+  output$dl_ts_png <- downloadHandler(
+    filename = function() {
+      glue("calcofi_timeseries-image_{input$sel_var}.png")
+    },
+    content = function(file) {
+      
+      d <- isolate(get_ts_data())
+      
+      v <- d_vars %>% 
+        filter(table_field == isolate(input$sel_var))
+      
+      names(d) <- c("time", "avg", "sd", "n")
+      d$lwr <- d$avg - d$sd
+      d$upr <- d$avg + d$sd
+      
+      p <- d %>% 
+        select(time, avg, lwr, upr) %>% 
+        dygraph(main = v$plot_title) %>%
+        dySeries(
+          c("lwr", "avg", "upr"), 
+          label = v$plot_label, color = v$plot_color)
+      # TODO: get xy extent of dygraph
+      
+      htm <- tempfile(fileext = ".html")
+      p |> saveWidget(file = htm)
+      htm |> webshot(file = file, delay = 2)
+    },
+    contentType	= "image/png"
+  )
+  
+  
   # get_depth_data() ----
   get_depth_data <- reactive({
     
@@ -501,6 +533,27 @@ shinyServer(function(input, output, session) {
     plot_depth_profile(d, v, interactive = T)
   })
   
+  # dl_depth_png: download depth profile image link ----
+  output$dl_depth_png <- downloadHandler(
+    filename = function() {
+      glue("calcofi_depth-image_{input$sel_var}.png")
+    },
+    content = function(file) {
+      
+      d <- isolate(get_depth_data())
+      
+      v <- d_vars %>% 
+        filter(table_field == input$sel_var)
+      
+      p <- plot_depth_profile(d, v, interactive = T)
+      # TODO: get xy extent of plotly
+      
+      htm <- tempfile(fileext = ".html")
+      p |> saveWidget(file = htm)
+      htm |> webshot(file = file, delay = 2)
+    },
+    contentType	= "image/png"
+  )
   
   # observe tab ----
   observeEvent(input$tabs, {
