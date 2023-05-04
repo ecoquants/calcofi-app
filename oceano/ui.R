@@ -74,8 +74,8 @@ dashboardPage(
         #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
         leafletOutput("map", width="100%", height="70vh"),
         "Download: ",
-        downloadLink("dl_map_img", "image (*.png)"), ", ",
-        downloadLink("dl_map_csv", "points (*.csv)"), ", ",
+        downloadLink("dl_map_png", "image.png"), ", ",
+        downloadLink("dl_map_csv", "points.csv"), ", ",
         div(style="display: inline-block; vertical-align:top;",
           uiOutput("dl_map_other") )
       ),
@@ -93,7 +93,9 @@ dashboardPage(
             "quarter","month","week","julianday","hour"),
           "year"),
         dygraphOutput("plot_ts", width="100%", height="70vh"),
-        downloadLink("dl_ts_csv", "Download data (*.csv)") ),
+        "Download: ",
+        downloadLink("dl_ts_png", "image.png"), ", ",
+        downloadLink("dl_ts_csv", "table.csv") ),
 
       tabPanel(
         title = "Depth profile", value = "depth",
@@ -102,6 +104,8 @@ dashboardPage(
           "Depth bins",
           10),
         plotly::plotlyOutput("plot_depth", width="100%", height="70vh"),
-        downloadLink("dl_depth_csv", "Download data (*.csv)") )
+        "Download: ",
+        downloadLink("dl_depth_png", "image.png"), ", ",
+        downloadLink("dl_depth_csv", "table.csv") )
     ))
 )
