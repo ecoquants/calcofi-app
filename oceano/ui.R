@@ -74,6 +74,7 @@ dashboardPage(
         #   * [PostgreSQL: Documentation: 15: 9.21. Aggregate Functions](https://www.postgresql.org/docs/15/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE)
         leafletOutput("map", width="100%", height="70vh"),
         "Download: ",
+        downloadLink("dl_map_img", "image (*.png)"), ", ",
         downloadLink("dl_map_csv", "points (*.csv)"), ", ",
         div(style="display: inline-block; vertical-align:top;",
           uiOutput("dl_map_other") )

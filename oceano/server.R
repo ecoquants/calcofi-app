@@ -209,6 +209,58 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # dl_map_image: download image link ----
+  output$dl_map_img <- downloadHandler(
+    filename = function() {
+      glue("calcofi_map-image_{input$sel_var}.png")
+    },
+    content = function(file) {
+      
+      f_png <- glue("{dir_cache}/idw_{rxvals$hash}.png")
+      # message(glue("f_png: {f_png}"))
+      
+      if (file.exists(f_png)){
+        # message(glue("url_png: {url_cache}/idw_{rxvals$hash}.png"))
+        readPNG(f_png) |> 
+          writePNG(file)
+      }
+      
+      plys <- isolate(get_map_data(
+        variable      = input$sel_var,
+        value         = input$sel_val,
+        aoi_keys      = rxvals$aoi_keys,
+        aoi_ewkt      = rxvals$aoi_ewkt, 
+        depth_m_min   = input$sel_depth_range[1],
+        depth_m_max   = input$sel_depth_range[2],
+        date_qrtr     = input$sel_qtr,
+        date_beg      = input$sel_date_range[1],
+        date_end      = input$sel_date_range[2],
+        return_type   = "polygons",
+        dir_cache     = dir_cache))
+      
+      rxvals$hash <- attr(plys, "hash")
+      
+      title = d_vars |> 
+        filter(table_field == isolate(input$sel_var)) |> 
+        pull(plot_label) |> 
+        paste(glue("<br>{isolate(input$sel_val)}"))
+      
+      # TODO: turn off zoom and attribution
+      m <- map_base(
+        zoomControl        = F,
+        attributionControl = F) |>
+        add_contours(plys, title, add_lyrs_ctrl = F)
+      
+      htm <- tempfile(fileext = ".html")
+      htmlwidgets::saveWidget(widget = m, file = htm)
+      webshot::webshot(url = htm, file = f_png, delay = 2)
+      unlink(htm)
+      readPNG(f_png) |> 
+        writePNG(file)
+    },
+    contentType	= "image/png"
+  )
+  
   # dl_map_other: download links ----
   output$dl_map_other <- renderUI({
     req(rxvals$hash)
