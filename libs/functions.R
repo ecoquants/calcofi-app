@@ -553,12 +553,12 @@ map_base <- function(
       group = "OceanLabels")
 }
 
-add_contours <- function(m, p, title){
+add_contours <- function(m, p, title, add_lyrs_ctrl = T){
   
   qbins <- sort(unique(c(p$z_min, p$z_max)))
   qpal <- colorBin("Spectral", bins = qbins, reverse = T)
   
-  m |> 
+  m <- m |> 
     clearGroup("contours") |> 
     clearControls() |> 
     addPolygons(
@@ -566,12 +566,14 @@ add_contours <- function(m, p, title){
       color = ~qpal(z_avg), group = "contours") |> 
     addLegend(
       pal = qpal, values = p$z_avg, opacity = 1, 
-      title = title, group = "contours") |> 
+      title = title, group = "contours")
+  if (add_lyrs_ctrl)
+    m <- m |> 
     addLayersControl(
       baseGroups = c("OceanBase", "OceanLabels"),
       overlayGroups = c("aoi", "contours"),
       options = layersControlOptions(collapsed = T))
-  
+  m
 }
 
 # DEBUG functions for scripts:explore_pg_contour2.qmd ----
