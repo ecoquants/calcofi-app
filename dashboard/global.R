@@ -25,8 +25,18 @@ map_survey_yr <- function(yr){
   leaflet(
     lns_yr,
     options = leafletOptions(
-      attributionControl = F)) %>% 
-    addProviderTiles(providers$Esri.OceanBasemap) %>% 
+      attributionControl = F)) |> 
+    # addProviderTiles(providers$Esri.OceanBasemap) %>% 
+    # add base: blue bathymetry and light brown/green topography
+    addProviderTiles(
+      "Esri.OceanBasemap",
+      options = providerTileOptions(
+        variant = "Ocean/World_Ocean_Base")) |>
+    # add reference: placename labels and borders
+    addProviderTiles(
+      "Esri.OceanBasemap",
+      options = providerTileOptions(
+        variant = "Ocean/World_Ocean_Reference")) |> 
     addPolylines() #%>% 
     #addCircleMarkers(data = pts_yr)
 }
