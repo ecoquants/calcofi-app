@@ -75,7 +75,7 @@ get_contour <- function(
       JOIN ctd_bottles AS cb USING (cast_count)
       JOIN aoi ON ST_Covers(aoi.geom, c.geom)
       WHERE 
-      (depthm BETWEEN {depth_m_min} AND {depth_m_max}) AND
+      (depth_m BETWEEN {depth_m_min} AND {depth_m_max}) AND
       (date BETWEEN '{date_beg}' AND '{date_end}') AND
       -- DATE_PART('year'   , date) = 2020  AND
       DATE_PART('quarter', date) IN ({paste(date_qrtr, collapse=',')})
