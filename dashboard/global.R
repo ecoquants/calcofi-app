@@ -6,7 +6,7 @@ librarian::shelf(
 options(readr.show_col_types = F)
 
 # surveys ----
-gdb <- here("data/obis_seamap_dataset_507_gdb_36682/obis_seamap_dataset_507.gdb")
+gdb <- here("dashboard/data/obis_seamap_dataset_507_gdb_36682/obis_seamap_dataset_507.gdb")
 # rgdal::ogrListLayers(gdb) 
 lyr_pts <- "obis_seamap_dataset_507_points"
 lyr_lns <- "obis_seamap_dataset_507_lines" 
@@ -61,7 +61,7 @@ map_sst_date <- function(date){
  
 plot_sst <- function(){
   
-  sst_csv <- here("data/statistics_sst_cinms.csv")
+  sst_csv <- here("dashboard/data/statistics_sst_cinms.csv")
   
   d <- read_csv(sst_csv) %>% 
     select(date, average_sst, quantile5_sst, quantile95_sst)
