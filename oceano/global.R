@@ -55,3 +55,20 @@ aoi_rows_init <- which(d_places$key %in% aoi_keys_init)
 #   sf layer has inconsistent datum (+proj=longlat +ellps=WGS84 +no_defs).
 #   Need '+proj=longlat +datum=WGS84'
 cc_places <- st_transform(cc_places, 4326)
+
+
+# larvae species choices
+larvae_spp_choices <- list(
+  Group = tbl(con, "species_groups") |> 
+    distinct(spp_group) |> 
+    pull(spp_group) |> 
+    sort(),
+  Species = tbl(con, "species_codes") |>
+    filter(taxon_rank == "Species") |> 
+    pull(scientific_name) |> 
+    sort() )
+
+
+
+
+

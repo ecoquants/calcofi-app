@@ -340,6 +340,24 @@ shinyServer(function(input, output, session) {
     
   })
   
+  # larvae ----
+  # observeEvent btn_larvae -> modal ----
+  observeEvent(input$btn_larvae, {
+    
+    showModal(modalDialog(
+      title = "Select Larval Species",
+      selectInput(
+        "sel_larvae_spp",
+        "Select Larval Species",
+        larvae_spp_choices,
+        multiple = T,
+        width = "100%"),
+      footer    = modalButton("Close"),
+      easyClose = T,
+      size      = "l") )
+
+  })
+  
   # mapedit ----
   output$mapedit <- renderLeaflet({
     library(leaflet.extras)

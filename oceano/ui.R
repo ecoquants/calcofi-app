@@ -1,23 +1,18 @@
 dashboardPage(
-  title = "Oceano App | CalCOFI.io",
+  title = "Explore App | CalCOFI.io",
   dashboardHeader(
     title = tagList(
       a(
         img(src = "./logo_calcofi.svg", height="50px"),
         href = "https://calcofi.io"),
-      "Oceano App") ),
+      "Explore App") ),
   
   dashboardSidebar(
     sidebarMenu(
       menuItem(
         "Larvae", tabName = "larvae", icon = icon("fa-squid", class="fa-duotone", html_dependency = fa_pro),
-        selectInput(
-          "sel_var2",
-          "Variable2",
-          setNames(
-            d_vars$table_field,
-            d_vars$plot_label),
-          "ctd_bottles.t_degc") ),
+        actionButton(
+          "btn_larvae", "Species", icon = icon("edit"), width = "200px") ),
       
       menuItem(
         "Oceanography",   tabName = "oceano",   icon = icon("water", class="fa-duotone"), 
