@@ -8,14 +8,27 @@ dashboardPage(
       "Oceano App") ),
   
   dashboardSidebar(
-    
-    selectInput(
-      "sel_var",
-      "Variable",
-      setNames(
-        d_vars$table_field,
-        d_vars$plot_label),
-      "ctd_bottles.t_degc"),
+    sidebarMenu(
+      menuItem(
+        "Larvae", tabName = "larvae", icon = icon("fa-squid", class="fa-duotone", html_dependency = fa_pro),
+        selectInput(
+          "sel_var2",
+          "Variable2",
+          setNames(
+            d_vars$table_field,
+            d_vars$plot_label),
+          "ctd_bottles.t_degc") ),
+      
+      menuItem(
+        "Oceanography",   tabName = "oceano",   icon = icon("water", class="fa-duotone"), 
+      
+        selectInput(
+          "sel_var",
+          "Variable",
+          setNames(
+            d_vars$table_field,
+            d_vars$plot_label),
+          "ctd_bottles.t_degc") ) ),
     
     sliderInput(
       "sel_depth_range",
@@ -61,6 +74,9 @@ dashboardPage(
   dashboardBody(
     shinyjs::useShinyjs(),
     tags$head(tags$link(rel="stylesheet", type="text/css", href="styles.css")),
+    #tags$script(src = "https://kit.fontawesome.com/11fc70dbba.js"),
+    tags$style("@import url(https://kit.fontawesome.com/11fc70dbba.css);"), # crossorigin="anonymous">
+    
     tabsetPanel(
       id = "tabs",
       tabPanel(

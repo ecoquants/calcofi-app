@@ -4,7 +4,7 @@
 
 librarian::shelf(
   calcofi/calcofi4r,
-  dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, leaflet, lubridate, 
+  dplyr, DT, dygraphs, fontawesome, ggplot2, glue, here, htmltools, htmlwidgets, leaflet, lubridate, 
   plotly, png, readr, shiny, shinydashboard, shinyjs, stringr, webshot)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
@@ -12,6 +12,13 @@ librarian::shelf(
 
 source(here("libs/db.R"))         # con: database connection 
 source(here("libs/functions.R"))
+
+fa_pro <- htmltools::htmlDependency(
+  name       = "font-awesome",
+  version    = fa_metadata()$version,
+  src        = "fontawesome",
+  package    = "fontawesome",
+  stylesheet = c("https://kit.fontawesome.com/11fc70dbba.css", "css/all.min.css", "css/v4-shims.min.css") )
 
 dir_cache <- switch(
   Sys.info()["sysname"],
