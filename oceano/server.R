@@ -10,6 +10,59 @@ shinyServer(function(input, output, session) {
     aoi_rows = aoi_rows_init,
     mapedit_counter = 1)
   
+  # bookmarking ----
+
+  # Save extra values in state$values when we bookmark
+  onBookmark(function(state) {
+    state$values$hash            <- rxvals$hash
+    state$values$map_init        <- rxvals$map_init
+    state$values$tbl_places_init <- rxvals$tbl_places_init
+    state$values$aoi_cat         <- rxvals$aoi_cat
+    state$values$aoi_keys        <- rxvals$aoi_keys
+    state$values$aoi_ewkt        <- rxvals$aoi_ewkt
+    state$values$aoi_rows        <- rxvals$aoi_rows
+    state$values$mapedit_counter <- rxvals$mapedit_counter
+  })
+  
+  # Read values from state$values when we restore
+  onRestore(function(state) {
+    rxvals$hash            <- state$values$hash
+    rxvals$map_init        <- state$values$map_init
+    rxvals$tbl_places_init <- state$values$tbl_places_init
+    rxvals$aoi_cat         <- state$values$aoi_cat
+    rxvals$aoi_keys        <- state$values$aoi_keys
+    rxvals$aoi_ewkt        <- state$values$aoi_ewkt
+    rxvals$aoi_rows        <- state$values$aoi_rows
+    rxvals$mapedit_counter <- state$values$mapedit_counter
+  })
+  
+  setBookmarkExclude(c(
+    "map_shape_mouseout",
+    "map_shape_mouseover",
+    "map_side_groups",
+    "map_groups",
+    "map_bounds",
+    "map_side_center",
+    "map_side_bounds",
+    "map_side_zoom",
+    "btn_aoi",
+    "btn_update",
+    "sidebarCollapsed",
+    "sidebarItemExpanded"))
+  
+  # * update url with each input change ----
+  
+  # ui.R: commented out `bookmarkButton()` since updating here
+  
+  observe({
+    # trigger this observer every time an input changes
+    reactiveValuesToList(input)
+    session$doBookmark()
+  })
+  onBookmarked(function(url) {
+    updateQueryString(url)
+  })
+  
   # map ----
   output$map <- renderLeaflet({
 
@@ -63,6 +116,11 @@ shinyServer(function(input, output, session) {
       dir_cache     = dir_cache)
     
     rxvals$hash <- attr(plys, "hash")
+    
+    # loggit(
+    #   "INFO",
+    #   "session$clientData$url_hostname",
+    #   clientData = session$clientData$url_hostname)
     
     if (is.null(plys)){
       showNotification(

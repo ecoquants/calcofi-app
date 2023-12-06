@@ -336,6 +336,32 @@ get_map_data <- function(
     collect() |> 
     nrow() == 1
   
+  # log_info(
+  #   list(get_map_data = list(
+  #       variable    = variable,
+  #       value       = value,
+  #       aoi_ewkt    = aoi_ewkt,
+  #       aoi_keys    = aoi_keys)))
+  
+  # loggit(
+  #   "INFO",
+  #   "get_map_data()",
+  #   data_json = jsonlite::toJSON(list(
+  #     variable    = variable,
+  #     value       = value,
+  #     aoi_ewkt    = aoi_ewkt,
+  #     aoi_keys    = aoi_keys,
+  #     date_beg    = date_beg,
+  #     date_end    = date_end,
+  #     date_qrtr   = date_qrtr,
+  #     depth_m_min = depth_m_min,
+  #     depth_m_max = depth_m_max,
+  #     n_bins      = n_bins,
+  #     return_type = return_type,
+  #     dir_cache   = dir_cache,
+  #     clientData  = clientData)) |> 
+  #     as.character())
+  
   # * if exists, update stats and return requested type ----
   if (has_idw & return_type != "points"){
 

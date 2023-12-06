@@ -1,4 +1,5 @@
-dashboardPage(
+ui <- function(request) {
+  dashboardPage(
   title = "Oceano App | CalCOFI.io",
   dashboardHeader(
     title = tagList(
@@ -8,6 +9,8 @@ dashboardPage(
       "Oceano App") ),
   
   dashboardSidebar(
+    
+    # bookmarkButton(),
     
     selectInput(
       "sel_var",
@@ -109,3 +112,4 @@ dashboardPage(
         downloadLink("dl_depth_csv", "table.csv") )
     ))
 )
+}

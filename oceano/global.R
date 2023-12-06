@@ -4,11 +4,20 @@
 
 librarian::shelf(
   calcofi/calcofi4r,
-  dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, leaflet, lubridate, 
-  plotly, png, readr, shiny, shinydashboard, shinyjs, stringr, webshot)
+  dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, leaflet, 
+  # logger, loggit, 
+  lubridate, plotly, png, readr, shiny, shinydashboard, shinyjs, 
+  stringr, webshot)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug
+
+# loggit::set_logfile("/share/github/apps_dev/oceano/logs/loggit.log")
+# loggit::read_logs()
+# logger::log_appender(appender_file("/share/github/apps_dev/oceano/logs/logger.log"))
+# logger::log_appender()
+
+enableBookmarking(store = "url")
 
 source(here("libs/db.R"))         # con: database connection 
 source(here("libs/functions.R"))
