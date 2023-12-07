@@ -22,10 +22,16 @@ if (!require("librarian")){
 # remotes::install_github("r-lib/ellipsis", ref="main")
 
 librarian::shelf(
-  bslib, dplyr, httr2, qfes/rdeck, sf, shinyWidgets, tidyselect, viridis)
+  bslib, dplyr, glue, httr2, qfes/rdeck, sf, shinyWidgets, tidyselect, viridis)
 
-mb_token_txt <- "/Users/bbest/My Drive/private/mapbox_token_bdbest.txt"
+dir_private <- switch(
+  Sys.info()[["sysname"]],
+  "Darwin" = "/Users/bbest/My Drive/private",
+  "Linux"  = "/share/private")
+
+mb_token_txt <- glue("{dir_private}/mapbox_token_bdbest.txt")
 stopifnot(file.exists(mb_token_txt))
+
 mb_token <- readLines(mb_token_txt)
 options(rdeck.mapbox_access_token = mb_token)
 # rdeck::mapbox_access_token()
