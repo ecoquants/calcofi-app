@@ -22,7 +22,7 @@ if (!require("librarian")){
 # remotes::install_github("r-lib/ellipsis", ref="main")
 
 librarian::shelf(
-  bslib, dplyr, httr2, qfes/rdeck, sf, shinyWidgets, tidyselect, viridis)
+  bslib, dplyr, httr2, purrr, qfes/rdeck, sf, shinyWidgets, tidyselect, viridis)
 
 mb_token_txt <- "/Users/bbest/My Drive/private/mapbox_token_bdbest.txt"
 stopifnot(file.exists(mb_token_txt))
