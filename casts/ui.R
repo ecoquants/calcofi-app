@@ -30,7 +30,7 @@ page_fillable(
     nav_panel(
       title = "Map",
       icon  = bs_icon("map"),
-      rdeckOutput("map", width = "100vw", height = "100vh") ),
+      rdeckOutput("map") ), # , width = "100vw", height = "100vh") ),
       
     nav_panel(
       title = "Filter",
