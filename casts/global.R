@@ -83,3 +83,6 @@ rng_depths <- dbGetQuery(
 d_0 <- tbl(con, "ctd_casts") |> 
   select(cast_count, date) |>
   collect()
+
+plcats <- dbGetQuery(con, "SELECT DISTINCT category FROM places ORDER BY category;") |> 
+  pull(category)

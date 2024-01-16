@@ -4,6 +4,7 @@ shinyServer(function(input, output, session) {
   output$map <- renderRdeck({
 
     # req(input$sel_aois)
+    req(input$sel_plcat)
 
     # get extent of features in db  # input = list(sel_aois = "public.ply_shlfs_s05")
     # schema_tbl <- input$sel_aois
@@ -48,7 +49,7 @@ shinyServer(function(input, output, session) {
         crs = st_crs(4326)),
       # editor         = T)  |>
       editor         = F,
-      layer_selector = F)  |>
+      layer_selector = T)  |>
       # add_tile_layer(
       #   id                = "nspp",
       #   name              = "nspp",
@@ -56,6 +57,20 @@ shinyServer(function(input, output, session) {
       #   visibility_toggle = T,
       #   opacity           = 0.5,
       #   data              = nspp_tile_url) |>
+      add_mvt_layer(
+        id                = "places",
+        name              = "places",
+        data              = rx_plurl(),
+        auto_highlight    = T,
+        pickable          = T,
+        tooltip           = all_of(c("category","key","name")), # c(mms_region, opd_name, prot_aprv, prot_numbe),
+        visibility_toggle = T,
+        opacity           = 0.5,
+        line_width_scale  = 2,
+        line_width_units  = "pixels",
+        get_fill_color    = "#0000FF80",  # blue 0.5 opacity
+        get_line_color    = "#0000FFCC",  # blue 0.8 opacity
+        highlight_color    = "#FFFF00") |> 
       add_mvt_layer(
         id                = "ctd_casts",
         name              = "ctd_casts",
@@ -169,6 +184,19 @@ shinyServer(function(input, output, session) {
     b <- event_data("plotly_brushing", source = "date")
     if (!is.null(b))
       url <- glue("{url}?filter=date BETWEEN '{as.Date(b$x[1])}' AND '{as.Date(b$x[2])}'")
+    
+    url
+  })
+  
+  # rx_url ----
+  rx_plurl <- reactive({
+    schema_tbl <- "public.places"
+    url        <- glue("https://tile.calcofi.io/{schema_tbl}/{{z}}/{{x}}/{{y}}.pbf")
+
+    # place category
+    plcat <- input$sel_plcat
+    if (!is.null(plcat))
+      url <- glue("{url}?filter=category='{plcat}'")
     
     url
   })

@@ -39,7 +39,13 @@ page_fillable(
         accordion_panel(
           title = "Time",
           plotlyOutput("p_date", height = "200px"),
-          "Date:",    verbatimTextOutput("e_date")) ) )
+          "Date:",    verbatimTextOutput("e_date")) ,
+        accordion_panel(
+          title = "Place",
+          selectInput(
+            "sel_plcat", "Place Category",
+            plcats,
+            "CalCOFI Zones")) ) )
 
     # nav_panel(
     #   title = "Table",
