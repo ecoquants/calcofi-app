@@ -4,7 +4,8 @@ if (!require("librarian")){
   library(librarian)
 }
 librarian::shelf(
-  DBI, dbplyr, dplyr, here, RPostgres)
+  DBI, dbplyr, dplyr, here, RPostgres,
+  quiet = T)
 
 is_server <- Sys.info()[["sysname"]] == "Linux"
 host <- ifelse(
