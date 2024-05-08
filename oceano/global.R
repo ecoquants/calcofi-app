@@ -4,10 +4,11 @@
 
 librarian::shelf(
   calcofi/calcofi4r,
-  dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, leaflet, 
+  dbplyr, dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, 
+  leaflet, leaflet.extras, oceanmetrics/leaftiles,
   # logger, loggit, 
   lubridate, plotly, png, readr, shiny, shinydashboard, shinyjs, 
-  stringr, webshot)
+  stringr, webshot2)
 # remotes::install_github("calcofi/calcofi4r", force=T)   # install remote
 # devtools::install_local(here::here("../calcofi4r"), force=T)  # install local
 # devtools::load_all(here("../calcofi4r"))                # debug
@@ -57,3 +58,29 @@ aoi_rows_init <- which(d_places$key %in% aoi_keys_init)
 #   sf layer has inconsistent datum (+proj=longlat +ellps=WGS84 +no_defs).
 #   Need '+proj=longlat +datum=WGS84'
 cc_places <- st_transform(cc_places, 4326)
+
+
+addCalcofiStations <- function(map){
+  
+  map |> 
+    addVectorTiles(
+      server  = "https://tile.calcofi.io",
+      layer   = "public.stations",
+      layerId = "stationid",
+      style = list(
+        fillColor   = "purple",
+        color       = "purple",
+        fill        = TRUE,
+        fillOpacity = 0.1,
+        opacity     = 0.5,
+        weight      = 0.2,
+        radius      = 1),
+      styleHighlight = list(
+        fillColor   = "yellow",
+        color       = "yellow",
+        fill        = TRUE,
+        fillOpacity = 0.1,
+        opacity     = 0.5,
+        weight      = 0.2,
+        radius      = 1))
+}
