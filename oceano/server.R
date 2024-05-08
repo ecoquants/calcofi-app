@@ -113,6 +113,10 @@ shinyServer(function(input, output, session) {
     rxvals$map_init <- T
     
     map_base() |>
+      # addVectorTiles(
+      #   server  = "https://tile.calcofi.io",
+      #   layer   = "public.stations",
+      #   layerId = "stationid") |> 
       add_contours(plys, title)
   })
   
