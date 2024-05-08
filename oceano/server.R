@@ -113,10 +113,7 @@ shinyServer(function(input, output, session) {
     rxvals$map_init <- T
     
     map_base() |>
-      # addVectorTiles(
-      #   server  = "https://tile.calcofi.io",
-      #   layer   = "public.stations",
-      #   layerId = "stationid") |> 
+      addCalcofiStations() |> 
       add_contours(plys, title)
   })
   
@@ -215,9 +212,10 @@ shinyServer(function(input, output, session) {
     get_tbl_places() |> 
       select(name)
   },
-  options = list(pageLength = 6),
-  server = FALSE,
-  selection = list(mode = 'multiple') )
+  options   = list(pageLength = 6)  #,
+  # server    = FALSE,
+  # selection = list(mode = 'multiple') 
+  )
   
   # observeEvent tbl_places_rows_selected ----
   observeEvent(input$tbl_places_rows_selected,{
@@ -259,7 +257,8 @@ shinyServer(function(input, output, session) {
     dataTableProxy("tbl_places") |> 
       selectRows(rxvals$aoi_rows)
     
-    map_base() |> 
+    map_base()  |> 
+      addCalcofiStations() |> 
       addPolygons(
         data = plys, layerId = ~key) |> 
       addPolygons(
@@ -437,6 +436,7 @@ shinyServer(function(input, output, session) {
       aoi_ewkt = rxvals$aoi_ewkt)
   
     m <- map_base() |>
+      addCalcofiStations() |>
       addPolygons(data = aoi, group = "aoi_edit") |> 
       addDrawToolbar(
         targetGroup = "aoi_edit",
