@@ -29,6 +29,8 @@ page_sidebar(
         "sld_time", "Time",
         min = min(lyr0$dates), max = max(lyr0$dates),
         value = lyr0$dates[1], # days(1),
+        animate = animationOptions(
+          interval = 2000),
         width = "100%") ),
   
     absolutePanel(
