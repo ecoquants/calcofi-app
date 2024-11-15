@@ -13,13 +13,13 @@ host <- ifelse(
   "postgis",   # from rstudio to postgis docker container on server
   "localhost") # from laptop to locally tunneled connection to db container on server
 # for localhost db, see: https://github.com/calcofi/server#ssh-tunnel-connection-to-postgis-db
-
-# database connect ----
-db_pass_txt <- "~/.calcofi_db_pass.txt"
-# sudo ln -s /home/bebest/.calcofi_db_pass.txt /root/.calcofi_db_pass.txt
-
+db_pass_txt <- ifelse(
+  is_server,
+  "/share/.calcofi_db_pass.txt",
+  "~/.calcofi_db_pass.txt")
 stopifnot(file.exists(db_pass_txt))
 
+# database connect ----
 con <- DBI::dbConnect(
   RPostgres::Postgres(),
   dbname   = "gis",
