@@ -14,84 +14,114 @@ source(here("libs/db.R"))
 #   write_csv(here("up2db/test_net_uuids.csv"))
 
 # define signin
-signin <- modalDialog(
-  title = "Login",
-  actionButton("google", "Google", icon = icon("google"), class = "btn-danger"),
-  # actionButton("github", "Github", icon = icon("github")),
-  footer = NULL)
+# signin <- modalDialog(
+#   title = "Login",
+#   actionButton("google", "Google", icon = icon("google"), class = "btn-danger"),
+#   # actionButton("github", "Github", icon = icon("github")),
+#   footer = NULL)
+
+tbls <- dbListTables(con) |> 
+  sort()
+# |> setdiff(c())
+#   TODO: add tables to disallow
 
 # UI definition
 ui <- fluidPage(
   titlePanel("Database Table Update Tool"),
   
   useFirebase(), # import dependencies
-  # firebaseUIContainer(),
+  firebaseUIContainer(),
   # reqSignin(
   #   h4("Logged in!"),
-    
+  suppressWarnings(
+    reqSignin(actionButton("signout", "Sign out"))),
+  uiOutput("welcome"),
   
-    sidebarLayout(
-      sidebarPanel(
-        fileInput("file", "Choose CSV File",
-                  accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+  suppressWarnings(
+    reqSignin(
+      sidebarLayout(
+        sidebarPanel(
+          fileInput("file", "Choose CSV File",
+                    accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+          
+          selectInput("table", "Target Table Name", tbls),
+          
+          actionButton("validate", "Validate Data", class = "btn-primary"),
+          actionButton("update", "Update Database", class = "btn-success"),
+          
+          hr(),
+          
+          h4("Connection Status:"),
+          verbatimTextOutput("connection_status"),
+          
+          hr(),
+          
+          h4("Validation Results:"),
+          verbatimTextOutput("validation_results")
+        ),
         
-        textInput("table", "Target Table Name"),
-        
-        actionButton("validate", "Validate Data", class = "btn-primary"),
-        actionButton("update", "Update Database", class = "btn-success"),
-        
-        hr(),
-        
-        h4("Connection Status:"),
-        verbatimTextOutput("connection_status"),
-        
-        hr(),
-        
-        h4("Validation Results:"),
-        verbatimTextOutput("validation_results")
-      ),
-      
-      mainPanel(
-        tabsetPanel(
-          tabPanel("Data Preview", DTOutput("preview")),
-          tabPanel("Schema Comparison", 
-                   h4("Database Schema:"),
-                   verbatimTextOutput("db_schema"),
-                   h4("CSV Schema:"),
-                   verbatimTextOutput("csv_schema"))
+        mainPanel(
+          tabsetPanel(
+            tabPanel("Data Preview", DTOutput("preview")),
+            tabPanel("Schema Comparison", 
+                     h4("Database Schema:"),
+                     verbatimTextOutput("db_schema"),
+                     h4("CSV Schema:"),
+                     verbatimTextOutput("csv_schema"))
+          )
         )
-      )
-    )
-  # ) # hide from UI
+      ) ))
 )
 
 # Server logic
 server <- function(input, output, session) {
-  showModal(signin)
+  # showModal(signin)
   
-  f <- FirebaseSocial$new()
+  # f <- FirebaseSocial$new()
   
-  observeEvent(input$google, {
-    f$launch_google()
-  })
+  # observeEvent(input$google, {
+  #   f$launch_google()
+  # })
   
   # observeEvent(input$github, {
   #   f$launch_github()
   # })
   
-  observe({
-    f$req_sign_in()
-    removeModal()
+  # observe({
+  #   f$req_sign_in()
+  #   removeModal()
+  # })
+  
+  output$welcome <- renderUI({
+    f$req_sign_in() # require sign in
+    
+    user <- f$get_signed_in() # get logged in user info
+    # print(user)
+    
+    h4("Welcome,", user$response$displayName)
   })
   
-  # f <- FirebaseUI$
-  #   new()$ # instantiate
-  #   set_providers( # define providers
-  #     # email = TRUE, 
-  #     google = TRUE
-  #   )$
-  #   launch() # launch
-  # 
+  observeEvent(input$signout, {
+    f$sign_out()
+  })
+  
+  f <- FirebaseUI$
+    # instantiate
+    new("session")$           
+    # set terms of service
+    set_tos_url(
+      "https://termly.io/resources/templates/terms-of-service-template/")$
+    # set privacy policy
+    set_privacy_policy_url(
+      "https://www.privacypolicytemplate.net/")$ 
+    # define providers
+    set_providers(            
+      # email = TRUE,
+      google = TRUE
+    )$
+    # launch
+    launch() 
+
   # s <- Storage$new() # initialise
   # a <- Analytics$new()$launch() # TOOD: add user analytics
   
