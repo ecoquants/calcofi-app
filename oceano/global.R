@@ -2,10 +2,13 @@
 # - show: points, raster, polygons
 # - play: animate window of time on bottom of map
 
+# devtools::load_all("/share/github/oceanmetrics/leaftiles")
+
 librarian::shelf(
   calcofi/calcofi4r,
   dbplyr, dplyr, DT, dygraphs, ggplot2, glue, here, htmltools, htmlwidgets, 
-  leaflet, leaflet.extras, oceanmetrics/leaftiles,
+  leaflet, leaflet.extras, 
+  oceanmetrics/leaftiles,
   # logger, loggit, 
   lubridate, plotly, png, readr, shiny, shinydashboard, shinyjs, 
   stringr, webshot2)
@@ -61,11 +64,13 @@ cc_places <- st_transform(cc_places, 4326)
 
 
 addCalcofiStations <- function(map){
+# addCalcofiStations <- function(map, filter){
   
   map |> 
     addVectorTiles(
       server  = "https://tile.calcofi.io",
       layer   = "public.stations",
+      # filter  = filter,
       layerId = "stationid",
       style = list(
         fillColor   = "purple",

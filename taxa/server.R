@@ -313,6 +313,7 @@ function(input, output, session) {
     # previewColors(colorFactor("Dark2", sci_names), sci_names)
     
     leafletProxy("map") |> 
+      clearShapes() |> 
       addCircleMarkers(
         data        = d_res,
         group       = "larvae",
@@ -332,6 +333,7 @@ function(input, output, session) {
           n_samples: {n_samples}<br>
           volsorted: {volsorted}<br>
           date range: {date_beg} to {date_end}")) |> 
+      clearControls() |>
       addLegend(
         position = 'topright',
         colors   = pal(sci_names), 
