@@ -1,13 +1,21 @@
+# TODO:
+# - [ ] logic in server.R d_res seems right, 
+#       but not matching https://calcofi.io/larvae-cinms/#prep_taxa_filter,
+#       eg scientific: Abralia; itis_tsn: 82406; spccode: 9555; n: 44500
+#  
+
 # libraries ----
 librarian::shelf(
-  bslib, DBI, dplyr, glue, here, htmlwidgets, leaflet, purrr, readr, ritis, shiny, 
+  bslib, DBI, dplyr, glue, here, htmlwidgets, leaflet, listviewer, purrr, readr, 
+  ritis, scales, shiny, 
   dreamRs/shinyWidgets, 
   plotly,
-  stringr, taxadb, taxize, tibble, tidyr)
+  stringr, taxadb, taxize, tibble, tidyr,
+  quiet = T)
 options(readr.show_col_types = F)
 # shinyTree::dfToTree()
 
-source(here("../apps_dev/libs/db.R")) # con: database connection 
+source(here("libs/db.R")) # con: database connection 
 
 # paths ----
 # taxa_csv <- here("../workflows/data/taxa-tree.csv")
@@ -95,3 +103,4 @@ v_taxa <- d_taxa |>
 # library(shinyTree)
 # library(shiny)
 # runApp(system.file("examples/06-search", package = "shinyTree"))
+# runApp(here("taxa"))

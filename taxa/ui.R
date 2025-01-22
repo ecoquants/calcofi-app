@@ -1,17 +1,17 @@
 library(shiny)
 
-js <- "
-  // https://shiny.posit.co/r/articles/build/js-events/#input-events
-  $(document).on('shiny:inputchanged', function(event){
-    if (event.name === 'sel_tree') {
-      // console.log('event.name == ui_tree');
-      // debugger;
-      $('span.treejs-label:contains(\\\"genus;\\\")').each(function(){
-        $(this)
-        .css('background-color', 'darkgray')
-        .css('font-style', 'italic') });
-        // .text($(this).text().replace('genus; ', ''))
-      } } )"
+# js <- "
+#   // https://shiny.posit.co/r/articles/build/js-events/#input-events
+#   $(document).on('shiny:inputchanged', function(event){
+#     if (event.name === 'sel_tree') {
+#       // console.log('event.name == ui_tree');
+#       // debugger;
+#       $('span.treejs-label:contains(\\\"genus;\\\")').each(function(){
+#         $(this)
+#         .css('background-color', 'darkgray')
+#         .css('font-style', 'italic') });
+#         // .text($(this).text().replace('genus; ', ''))
+#       } } )"
 # TODO: text replace taxa_rank; do for rest of taxa_ranks
 
 page_fillable(
@@ -23,7 +23,7 @@ page_fillable(
     placement = "above",
     selected  = "nav_configure",
     
-    tags$head(tags$script(HTML(js))),
+    # tags$head(tags$script(HTML(js))),
 
     # nav_configure ----
     nav_panel(
@@ -73,10 +73,7 @@ page_fillable(
         # https://stackoverflow.com/questions/73716725/is-there-a-way-to-display-html-inside-a-selectinput-in-an-r-shiny-app
         
         # TODO: helptext("Uncheck any taxa to exclude here")
-        uiOutput("ui_tree"),
-        
-        plotlyOutput('plt')
-        
+        jsoneditOutput("json_tree")
       ) ),
     
     # nav_map ----
