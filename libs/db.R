@@ -15,9 +15,12 @@ host <- ifelse(
 # for localhost db, see: https://github.com/calcofi/server#ssh-tunnel-connection-to-postgis-db
 
 # database connect ----
-db_pass_txt <- "~/.calcofi_db_pass.txt"
+db_pass_txt <- ifelse(
+  is_server,
+  "/share/.calcofi_db_pass.txt",
+  "~/.calcofi_db_pass.txt")
 # sudo ln -s /home/bebest/.calcofi_db_pass.txt /root/.calcofi_db_pass.txt
-
+# sudo ln -s /share/.calcofi_db_pass.txt /root/.calcofi_db_pass.txt
 stopifnot(file.exists(db_pass_txt))
 
 con <- DBI::dbConnect(
