@@ -82,8 +82,9 @@ page_fillable(
       value = "nav_map",
       icon  = icon("map"),
       
-      leafletOutput("map"),
-      downloadButton("downloadData", label = "Download")),
+      leafletOutput("map")
+      #, downloadButton("downloadData", label = "Download")
+      ),
     
   )
 )
