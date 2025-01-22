@@ -10,7 +10,9 @@ librarian::shelf(
   ritis, scales, shiny, 
   dreamRs/shinyWidgets, 
   plotly,
-  stringr, taxadb, taxize, tibble, tidyr,
+  stringr, 
+  # taxadb, taxize, 
+  tibble, tidyr,
   quiet = T)
 options(readr.show_col_types = F)
 # shinyTree::dfToTree()
